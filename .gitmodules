@@ -1,0 +1,10 @@
+[submodule "libs/glslang"]
+	path = libs/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+	ignore = dirty
+[submodule "libs/BlueVM"]
+	path = libs/BlueVM
+	url = https://github.com/dfranx/BlueVM.git
+[submodule "libs/aGen"]
+	path = libs/aGen
+	url = https://github.com/dfranx/aGen.git

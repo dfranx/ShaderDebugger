@@ -1,0 +1,4 @@
+bin
+*.cmake
+CMakeCache.txt
+CMakeFiles

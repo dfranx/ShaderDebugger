@@ -5,6 +5,22 @@
 
 namespace sd
 {
+	struct ASTVariable
+	{
+		bool IsUniform;
+		bool IsInput;
+		bool IsOutput;
+		bool IsBuffer;
+		bool IsGlobal;
+		bool IsShared;
+
+		int Location;
+		int ID;
+
+		std::string Type;
+		std::string Name;
+	};
+
 	class BVMGenerator
 	{
 	public:

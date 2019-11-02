@@ -5,10 +5,10 @@
 
 #include <aGen/aGen.hpp>
 
-#include "ShaderType.h"
-#include "Function.h"
-#include "Structure.h"
-#include "Variable.h"
+#include <ShaderDebugger/ShaderType.h>
+#include <ShaderDebugger/Function.h>
+#include <ShaderDebugger/Structure.h>
+#include <ShaderDebugger/Variable.h>
 
 namespace sd
 {

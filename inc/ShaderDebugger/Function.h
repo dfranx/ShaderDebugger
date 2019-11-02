@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "Variable.h"
+#include <ShaderDebugger/Variable.h>
 
 namespace sd
 {

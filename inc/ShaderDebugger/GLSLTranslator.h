@@ -8,7 +8,7 @@
 #include <vector>
 #include <stack>
 
-#include "Translator.h"
+#include <ShaderDebugger/Translator.h>
 
 namespace sd
 {

@@ -10,3 +10,4 @@ GLSL BlueVM implementation:
 - test vec3(1).x;
 - implement $$discard function
 - GLSL bv_library
+- field swizzling

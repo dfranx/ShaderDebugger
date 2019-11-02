@@ -1,0 +1,11 @@
+GLSL aGen generator:
+- add DebugLine opcode
+
+GLSL BlueVM implementation:
+- add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
+- test 2 functions with same name but different arguments
+- test casting int(3.2f) == 3
+- test constructors
+- test constructor for built in types
+- implement $$discard function
+- GLSL bv_library

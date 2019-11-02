@@ -6,8 +6,8 @@ It can be used to run shaders on CPU or debug them (get variable values, run the
 **NOTE: This library is currently not finished/doesn't work! Please wait.**
 
 ## How?
-ShaderDebugger uses [glslang](https://github.com/KhronosGroup/glslang) to parse HLSL and
-GLSL into AST. The AST is then converted to the bytecode with the [aGen](https://github.com/dfranx/aGen). The bytecode is executed using the [BlueVM](https://github.com/dfranx/BlueVM) library.
+ShaderDebugger uses [glslang](https://github.com/graphitemaster/glsl-parser) to parse 
+GLSL into AST. The AST is converted to the bytecode with the [aGen](https://github.com/dfranx/aGen) library. The bytecode can then be executed using the [BlueVM](https://github.com/dfranx/BlueVM).
 
 ## Example
 **NOTE: this is a 'prototype'**
@@ -34,3 +34,15 @@ while (!vs.IsFinished()) {
     // get various info now using these functions: GetCurrentFunction, GetFunctionStack, GetVariableValue, etc...
 }
 ```
+
+## Limitations
+### GLSL
+- doesn't support macros, interface blocks, local & structure member arrays & global variable initalization
+- parsed, but not stored & not implemented: storage, auxilary, precision, memory, invariant
+- parsed & stored but not implemented: smooth, flat, noperspective
+
+### HLSL
+- not implemented yet
+
+### Both
+- function overloading

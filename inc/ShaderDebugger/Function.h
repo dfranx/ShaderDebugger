@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Variable.h"
 
 namespace sd
 {
@@ -8,6 +9,6 @@ namespace sd
 		size_t ID;
 
 		std::string Name;
-		size_t ArgumentCount;
+		std::vector<Variable> Arguments;
 	};
 }

@@ -3,10 +3,8 @@
 ShaderDebugger is a library built for [SHADERed](https://github.com/dfranx/SHADERed).
 It can be used to run shaders on CPU or debug them (get variable values, run them line by line, etc...).
 
-**NOTE: This library is currently not finished/doesn't work! Please wait.**
-
 ## How?
-ShaderDebugger uses [glslang](https://github.com/graphitemaster/glsl-parser) to parse 
+ShaderDebugger uses [glsl-parser](https://github.com/dfranx/glsl-parser) to parse 
 GLSL into AST. The AST is converted to the bytecode with the [aGen](https://github.com/dfranx/aGen) library. The bytecode can then be executed using the [BlueVM](https://github.com/dfranx/BlueVM).
 
 ## Example

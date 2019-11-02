@@ -69,6 +69,16 @@ namespace sd
 		void translate(glsl::astTU *tu);
 
 	private:
+		int m_lastLineSaved; // dont add OpCode::DebugLine for every expression, but rather only when astNode->line != m_lastLineSaved
+		template<typename T>
+		inline void m_exportLine(glsl::astNode<T>* node)
+		{
+			if (m_lastLineSaved != node->line) {
+				m_gen.Function.DebugLineNumber(node->line);
+				m_lastLineSaved = node->line;
+			}
+		}
+
 		std::unordered_map<std::string, glsl::astConstantExpression*> m_initInMain;
 		std::unordered_map<std::string, glsl::vector<glsl::astConstantExpression*>> m_initArraysInMain; // global arrays
 		std::string m_currentFunction, m_entryFunction;

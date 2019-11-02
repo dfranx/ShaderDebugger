@@ -48,7 +48,7 @@ int main() {
 		bv_variable ret = bv_program_call(prog, func_main, NULL, NULL);
 
 		// print the value
-		printf("main()!\n");
+		printf("main()\n");
 		
 		// we have to deinitialize returned variables
 		bv_variable_deinitialize(&ret);

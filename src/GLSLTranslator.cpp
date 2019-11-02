@@ -12,6 +12,7 @@ namespace sd
 	bool GLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
 		m_entryFunction = entry;
+		m_gen.SetHeader(0, 1);
 
 		int shaderType = glsl::astTU::kVertex;
 		if (type == ShaderType::Pixel)
@@ -184,23 +185,42 @@ namespace sd
 		for (int i = 0; i < m_globals.size(); i++)
 			if (m_globals[i].Name == vdata->name) {
 				if (!m_isSet) {
-					if (m_usePointer) m_gen.Function.GetGlobalPointer(i);
-					else m_gen.Function.GetGlobal(i);
+					if (m_usePointer) m_gen.Function.GetGlobalPointer(m_globals[i].ID);
+					else m_gen.Function.GetGlobal(m_globals[i].ID);
 				} else
-					m_gen.Function.SetGlobal(i);
+					m_gen.Function.SetGlobal(m_globals[i].ID);
 
 				return;
 			}
 
-		// locals
-		for (int i = 0; i < m_locals[m_currentFunction].size(); i++) {
-			if (m_locals[m_currentFunction][i] == vdata->name) {
-				if (!m_isSet) {
-					if (m_usePointer) m_gen.Function.GetLocalPointer(i);
-					else m_gen.Function.GetLocal(i);
-				} else
-					m_gen.Function.SetLocal(i);
-				return;
+		if (m_currentFunction.size() != 0) {
+			// locals
+			for (int i = 0; i < m_locals[m_currentFunction].size(); i++) {
+				if (m_locals[m_currentFunction][i] == vdata->name) {
+					if (!m_isSet) {
+						if (m_usePointer) m_gen.Function.GetLocalPointer(i);
+						else m_gen.Function.GetLocal(i);
+					} else
+						m_gen.Function.SetLocal(i);
+					return;
+				}
+			}
+
+			// arguments
+			for (int i = 0; i < m_func.size(); i++) {
+				if (m_func[i].Name != m_currentFunction)
+					continue;
+
+				for (int j = 0; j < m_func[i].Arguments.size(); j++) {
+					if (m_func[i].Arguments[j].Name == vdata->name) {
+						if (!m_isSet) {
+							if (m_usePointer) m_gen.Function.GetArgumentPointer(j);
+							else m_gen.Function.GetArgument(j);
+						} else
+							m_gen.Function.SetArgument(j);
+						return;
+					}
+				}
 			}
 		}
 	}
@@ -241,12 +261,16 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateFunctionCall(glsl::astFunctionCall *expression) {
-		m_gen.Function.CallReturn(expression->name, expression->parameters.size());
-		for (size_t i = 0; i < expression->parameters.size(); i++)
+		m_exportLine(expression);
+		
+		for (int i = expression->parameters.size()-1; i >= 0; i--)
 			translateExpression(expression->parameters[i]);
+		m_gen.Function.CallReturn(expression->name, expression->parameters.size());
 	}
 
 	void GLSLTranslator::translateConstructorCall(glsl::astConstructorCall *expression) {
+		m_exportLine(expression);
+		
 		for (size_t i = 0; i < expression->parameters.size(); i++)
 			translateExpression(expression->parameters[i]);
 
@@ -259,10 +283,10 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateDeclarationVariable(glsl::astFunctionVariable *variable) {
+		m_exportLine(variable);
+		
 		glsl::astVariable* vdata = (glsl::astVariable*)variable;
 
-		
-		
 		m_locals[m_currentFunction].push_back(vdata->name);
 
 		if (variable->initialValue) {
@@ -281,6 +305,7 @@ namespace sd
 	}
 
 	void GLSLTranslator::translatePostIncrement(glsl::astPostIncrementExpression *expression) {
+		m_exportLine(expression);
 		translateExpression(expression->operand);
 
 		m_usePointer = true;
@@ -291,6 +316,7 @@ namespace sd
 	}
 
 	void GLSLTranslator::translatePostDecrement(glsl::astPostDecrementExpression *expression) {
+		m_exportLine(expression);
 		translateExpression(expression->operand);
 
 		m_usePointer = true;
@@ -321,6 +347,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translatePrefixIncrement(glsl::astPrefixIncrementExpression *expression) {
+		m_exportLine(expression);
+		
 		m_usePointer = true;
 		translateExpression(expression->operand);
 		m_gen.Function.Increment();
@@ -331,6 +359,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translatePrefixDecrement(glsl::astPrefixDecrementExpression *expression) {
+		m_exportLine(expression);
+		
 		m_usePointer = true;
 		translateExpression(expression->operand);
 		m_gen.Function.Decrement();
@@ -341,6 +371,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateAssign(glsl::astAssignmentExpression *expression) {
+		m_exportLine(expression);
+		
 		if (expression->assignment != glsl::kOperator_assign) // push the lhs to the stack too
 			translateExpression(expression->operand1);
 
@@ -373,7 +405,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateSequence(glsl::astSequenceExpression *expression) {
-		printf("[DEBUG] Sequence?\n");
+		m_exportLine(expression);
+		
 		translateExpression(expression->operand1);
 		translateExpression(expression->operand2);
 	}
@@ -385,6 +418,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateTernary(glsl::astTernaryExpression *expression) {
+		m_exportLine(expression);
+		
 		translateExpression(expression->condition);
 		size_t pos = m_gen.Function.If();
 		// ?
@@ -448,7 +483,8 @@ namespace sd
 
 	void GLSLTranslator::translateCompoundStatement(glsl::astCompoundStatement *statement) {
 		// m_gen.Function.ScopeStart(); // TODO: it doesn't work with these?
-
+		m_exportLine(statement);
+		
 		printf("[DEBUG] Entering compoung statement!\n");
 
 		for (size_t i = 0; i < statement->statements.size(); i++)
@@ -467,6 +503,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateIfStetement(glsl::astIfStatement *statement) {
+		m_exportLine(statement);
+		
 		translateExpression(statement->condition);
 		size_t pos = m_gen.Function.If();
 		translateStatement(statement->thenStatement);
@@ -477,6 +515,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateSwitchStatement(glsl::astSwitchStatement *statement) {
+		m_exportLine(statement);
+		
 		m_breaks.push(std::vector<size_t>());
 
 		glsl::vector<glsl::astStatement*>& stats = statement->statements;
@@ -506,6 +546,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateCaseLabelStatement(glsl::astCaseLabelStatement *statement) {
+		m_exportLine(statement);
+		
 		m_caseIfDefault = statement->isDefault;
 		if (statement->isDefault) { }
 		else {
@@ -516,6 +558,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateWhileStatement(glsl::astWhileStatement *statement) {
+		m_exportLine(statement);
+		
 		size_t rewind_adr = m_gen.Function.GetCurrentAddress();
 
 		m_breaks.push(std::vector<size_t>());
@@ -546,6 +590,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateDoStatement(glsl::astDoStatement *statement) {
+		m_exportLine(statement);
+		
 		size_t rewind_adr = m_gen.Function.GetCurrentAddress();
 
 		m_breaks.push(std::vector<size_t>());
@@ -567,6 +613,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateForStatement(glsl::astForStatement *statement) {
+		m_exportLine(statement);
+		
 		m_breaks.push(std::vector<size_t>());
 
 		if (statement->init) {
@@ -631,6 +679,8 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateReturnStatement(glsl::astReturnStatement *statement) {
+		m_exportLine(statement);
+		
 		if (statement->expression)
 			translateExpression(statement->expression);
 
@@ -655,6 +705,7 @@ namespace sd
 		case glsl::astStatement::kSwitch:
 			return translateSwitchStatement((glsl::astSwitchStatement*)statement);
 		case glsl::astStatement::kCaseLabel:
+			m_exportLine(statement);
 			return translateCaseLabelStatement((glsl::astCaseLabelStatement*)statement);
 		case glsl::astStatement::kWhile:
 			return translateWhileStatement((glsl::astWhileStatement*)statement);
@@ -663,12 +714,15 @@ namespace sd
 		case glsl::astStatement::kFor:
 			return translateForStatement((glsl::astForStatement*)statement);
 		case glsl::astStatement::kContinue:
+			m_exportLine(statement);
 			return translateContinueStatement();
 		case glsl::astStatement::kBreak:
+			m_exportLine(statement);
 			return translateBreakStatement();
 		case glsl::astStatement::kReturn:
 			return translateReturnStatement((glsl::astReturnStatement*)statement);
 		case glsl::astStatement::kDiscard:
+			m_exportLine(statement);
 			return translateDiscardStatement();
 		}
 	}
@@ -682,7 +736,24 @@ namespace sd
 
 		func.ID = m_gen.Function.Create(function->name, function->parameters.size());
 		func.Name = m_currentFunction = function->name;
-		func.ArgumentCount = function->parameters.size();
+		func.Arguments.clear();
+
+		for (size_t i = 0; i < function->parameters.size(); i++) {
+			glsl::astFunctionParameter* param = function->parameters[i];
+
+			Variable pdata;
+			pdata.ID = i;
+			pdata.Name = param->name;
+			if (param->baseType->builtin)
+				pdata.Type = kTypes[((glsl::astBuiltin*)param->baseType)->type];
+			else
+				pdata.Type = ((glsl::astStruct*)param->baseType)->name;
+			// TODO: arrays
+			// param->isArray
+			
+			func.Arguments.push_back(pdata);
+		}
+
 
 		m_gen.Function.SetCurrent(func.Name);
 
@@ -712,6 +783,8 @@ namespace sd
 				}
 			}
 		}
+
+		m_exportLine(function);
 
 		// Return type not needed? function->returnType
 

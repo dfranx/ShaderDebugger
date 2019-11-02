@@ -7,5 +7,6 @@ GLSL BlueVM implementation:
 - test casting int(3.2f) == 3
 - test constructors
 - test constructor for built in types
+- test vec3(1).x;
 - implement $$discard function
 - GLSL bv_library

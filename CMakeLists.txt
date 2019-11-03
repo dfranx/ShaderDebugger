@@ -6,7 +6,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
 
 # source code
 set(SOURCES
-    main.cpp
+	main.cpp
+	src/Utils.cpp
+	src/GLSLLibrary.cpp
     src/GLSLTranslator.cpp
 	src/ShaderDebugger.cpp
 	
@@ -41,6 +43,9 @@ set(SOURCES
 	libs/BlueVM/src/types.c
 )
 
+# glm
+find_package(GLM REQUIRED)
+
 # cmake toolchain 
 if(CMAKE_TOOLCHAIN_FILE)
     include(${CMAKE_TOOLCHAIN_FILE})
@@ -56,7 +61,10 @@ set_target_properties(ShaderDebugger PROPERTIES
 )
 
 # include directories
-target_include_directories(ShaderDebugger PRIVATE inc libs libs/BlueVM/inc)
+target_include_directories(ShaderDebugger PRIVATE ${GLM_INCLUDE_DIRS} inc libs libs/BlueVM/inc)
+
+# link libraries
+target_link_libraries(ShaderDebugger ${GLM_LIBRARY_DIRS})
 
 if (NOT MSVC)
 	target_compile_options(ShaderDebugger PRIVATE -Wno-narrowing)

@@ -68,6 +68,10 @@ namespace sd
 		void translateStructure(glsl::astStruct *structure);
 		void translate(glsl::astTU *tu);
 
+		inline bool isTypeActuallyStruct(const std::string& t) {
+			return !(t == "void" || t == "bool" || t == "int" || t == "uint" || t == "float" || t == "double");
+		}
+
 	private:
 		int m_lastLineSaved; // dont add OpCode::DebugLine for every expression, but rather only when astNode->line != m_lastLineSaved
 		template<typename T>

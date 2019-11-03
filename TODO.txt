@@ -1,13 +1,23 @@
-GLSL aGen generator:
-- add DebugLine opcode
+- rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
-- test 2 functions with same name but different arguments
+- convert values when assigning: float a = 2; will store int and not a float...
+- initialize global variables (vec3, etc...)
 - test casting int(3.2f) == 3
 - test constructors
 - test constructor for built in types
-- test vec3(1).x;
 - implement $$discard function
 - GLSL bv_library
+- add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
 - field swizzling
+- Execute arguments
+
+
+This code crashes(??? but it doesn't if I don't use 0.9f):
+out float outColor;
+
+void main()
+{
+	float test = vec3(0.9f, 1.5f, 1.4f).x;
+	outColor = test;
+}

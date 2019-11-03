@@ -8,31 +8,47 @@ ShaderDebugger uses [glsl-parser](https://github.com/dfranx/glsl-parser) to pars
 GLSL into AST. The AST is converted to the bytecode with the [aGen](https://github.com/dfranx/aGen) library. The bytecode can then be executed using the [BlueVM](https://github.com/dfranx/BlueVM).
 
 ## How to compile
+Run these commands to set up and compile the project:
+```bash
+git clone https://github.com/dfranx/ShaderDebugger.git
+cd ShaderDebugger
+git submodule init
+git submodule update
+cmake .
+make
+```
+
+Run the program:
+```bash
+./bin/ShaderDebugger
+```
 
 ## Example
 ```c++
+std::string src = ... your shader code ...;
 bv_library* libGLSL = sd::Library::GLSL();
-sd::ShaderDebugger vs;
-vs.SetSource(sd::GLSLTranslator(), sd::ShaderType::Vertex, vertexCode, "main", libGLSL);
 
-vs.SetValue("matVP", glm::mat4(1));
+sd::ShaderDebugger dbg;
+dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", libGLSL);
 
-for (int i = 0; i < 3; i++) {
-    vs.SetValue("position", vertices[i]);
-    vs.SetValue("color", glm::vec3(i\*0.1f, i\*0.2f, i\*0.3f, 1.0f));
-    vs.Execute("main"); // execute whole vertex shader
+dbg.SetValue("iFactor", 0.7f);
+dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
 
-    glm::vec3 oPos = vs.GetValue<glm::vec3>("oPos");
-    ...
-}
+bv_variable ret = dbg.Execute();
+
+glm::vec3 outColor = sd::AsVec3(*dbg.GetValue("outColor"));
+printf("outColor = vec3(%.2f, %.2f, %.2f);\n", outColor.x, outColor.y, outColor.z);
+
+bv_variable_deinitialize(&ret);
+bv_library_delete(libGLSL);
+
+return 0;
 ```
 
-Or to execute line by line:
+Or execute line by line:
 ```c++
-while (!vs.IsFinished()) {
-    vs.Step();
-
-    // get various info now using these functions: GetCurrentFunction, GetFunctionStack, GetVariableValue, etc...
+while (vs.Step()) {
+    // get various info using these functions: GetCurrentFunction, GetFunctionStack, GetVariableValue, etc...
 }
 ```
 

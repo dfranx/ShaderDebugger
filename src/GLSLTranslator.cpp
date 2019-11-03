@@ -11,6 +11,11 @@ namespace sd
 {
 	bool GLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
+		m_lastLineSaved = -1;
+		m_isSet = false;
+		m_usePointer = false;
+		m_caseIfDefault = false;
+		m_caseIfAddr = 0;
 		m_entryFunction = entry;
 		m_gen.SetHeader(0, 1);
 
@@ -271,14 +276,19 @@ namespace sd
 	void GLSLTranslator::translateConstructorCall(glsl::astConstructorCall *expression) {
 		m_exportLine(expression);
 		
-		for (size_t i = 0; i < expression->parameters.size(); i++)
+		for (int i = expression->parameters.size()-1; i >= 0; i--)
 			translateExpression(expression->parameters[i]);
 
-		if (expression->type->builtin)
-			printf("[DEBUG] Trying to call constructor for built-in type...\n");
-		else {
-			printf("[DEBUG] Calling %s constructor...", ((glsl::astStruct*)expression->type)->name);
-			m_gen.Function.CallMethod(((glsl::astStruct*)expression->type)->name, expression->parameters.size());
+		if (expression->type->builtin) {
+			std::string tName = kTypes[((glsl::astBuiltin*)expression->type)->type];
+			if (isTypeActuallyStruct(tName))
+				m_gen.Function.NewObjectByName(tName, expression->parameters.size());
+			else
+				m_gen.Function.CallReturn(tName, expression->parameters.size()); // casting: int(3.2f)
+		} else {
+			// TODO: push new object
+			printf("[DEBUG] Calling %s constructor...\n", ((glsl::astStruct*)expression->type)->name);
+			m_gen.Function.NewObjectByName(((glsl::astStruct*)expression->type)->name, expression->parameters.size());
 		}
 	}
 
@@ -297,10 +307,19 @@ namespace sd
 
 		if (!vdata->baseType->builtin) {
 			std::string structName = ((glsl::astStruct*)vdata->baseType)->name;
-			m_gen.Function.NewObjectByName(structName, 0);
+			m_gen.Function.NewObjectByName(structName);
 			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 
 			printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
+		}
+		else {
+			std::string structName = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
+
+			if (isTypeActuallyStruct(structName)) {
+				m_gen.Function.NewObjectByName(structName, 0);
+				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
+			}
 		}
 	}
 

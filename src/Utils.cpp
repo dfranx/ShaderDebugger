@@ -18,4 +18,16 @@ namespace sd
 
 		return glm::vec3(0.0f);
 	}
+	float AsFloat(const bv_variable& var)
+	{
+		if (var.type == bv_type_float)
+			return bv_variable_get_float(var);
+		return 0.0f;
+	}
+	int AsInteger(const bv_variable& var)
+	{
+		if (var.type == bv_type_int)
+			return bv_variable_get_int(var);
+		return 0;
+	}
 }

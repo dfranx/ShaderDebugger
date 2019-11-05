@@ -1,7 +1,6 @@
 out vec3 outColor;
 
 in float iFactor;
-in vec3 iColor;
 
 void main()
 {
@@ -10,6 +9,6 @@ void main()
 	float val = 0.0f;
 	for (int i = 0; i < 5; i++) 
 		val += 0.1f;
-
-	outColor = vec3(val * test, iFactor, iColor.y);
+	
+	outColor = vec3(val * test, iFactor, 0.0f);
 }

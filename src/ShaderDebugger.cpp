@@ -7,13 +7,18 @@ namespace sd
 		m_prog = nullptr;
 		m_library = nullptr;
 		m_stepper = nullptr;
+		m_transl = nullptr;
 	}
 	ShaderDebugger::~ShaderDebugger()
 	{
-		//if (m_stepper != nullptr)
-		//	bv_function_stepper_delete(m_stepper);
+		if (m_stepper != nullptr)
+			bv_function_stepper_delete(m_stepper);
 		if (m_prog != nullptr)
 			bv_program_delete(m_prog);
+		if (m_transl != nullptr)
+			delete m_transl;
+		if (m_library != nullptr)
+			bv_library_delete(m_library);
 	}
 	bv_variable ShaderDebugger::Execute(const std::string& func)
 	{
@@ -46,6 +51,66 @@ namespace sd
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
 	}
 
+	std::string ShaderDebugger::GetCurrentFunction()
+	{
+		if (m_stepper->scope->count == 0)
+			return "";
+
+		bv_state* state = bv_scope_get_state(m_stepper->scope);
+		bv_program* prog = state->prog;
+		u16 func_count = bv_program_get_function_count(prog);
+
+		for (u16 i = 0; i < func_count; i++)
+			if (prog->functions[i] == state->func)
+				return prog->block->functions->names[i];
+
+		return "";
+	}
+	std::vector<std::string> ShaderDebugger::GetFunctionStack()
+	{
+		if (m_stepper->scope->count == 0)
+			return std::vector<std::string>();
+			
+		std::vector<std::string> ret;
+		bv_scope* scope = m_stepper->scope;
+
+		// I think there was an easier way to get the function stack
+		// but I am not sure (TODO - check)
+		for (u32 j = 0; j < scope->count; j++) {
+			bv_state* state = &scope->state[j];
+			bv_program* prog = state->prog;
+			u16 func_count = bv_program_get_function_count(prog);
+			for (u16 i = 0; i < func_count; i++)
+				if (prog->functions[i] == state->func)
+					ret.push_back(prog->block->functions->names[i]);
+		}
+
+		return ret;
+	}
+	std::vector<std::string> ShaderDebugger::GetCurrentFunctionLocals()
+	{
+		std::string curFunc = GetCurrentFunction();
+		if (curFunc.size() == 0)
+			return std::vector<std::string>();
+		return m_transl->GetLocals(curFunc);
+	}
+	bv_variable* ShaderDebugger::GetLocalValue(const std::string& varname)
+	{
+		bv_scope* scope = m_stepper->scope;
+		std::string curFunc = GetCurrentFunction();
+		const auto& locList = m_transl->GetLocals(curFunc);
+
+		for (u32 i = 0; i < locList.size(); i++)
+			if (locList[i] == varname) {
+				u32 index = bv_scope_get_locals_start(scope)+i;
+
+				if (index >= scope->locals.length)
+					return nullptr;
+				
+				return &scope->locals.data[index];
+			}
+		return nullptr;
+	}
 	bool ShaderDebugger::Step()
 	{
 		bool done = bv_function_stepper_is_done(m_stepper);

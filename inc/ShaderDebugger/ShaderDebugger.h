@@ -17,12 +17,17 @@ namespace sd
 		template<typename CodeTranslator>
 		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_library* library)
 		{
+			if (m_transl != nullptr)
+				delete m_transl;
+			
+			m_transl = new CodeTranslator();
+
 			m_entry = entry;
 			m_library = library;
 
 			CodeTranslator tr;
-			bool done = tr.Parse(stage, src, entry);
-			std::vector<uint8_t> bytecode = tr.GetBytecode();
+			bool done = m_transl->Parse(stage, src, entry);
+			std::vector<uint8_t> bytecode = m_transl->GetBytecode();
 			
 			if (done && bytecode.size() > 0) {
 				m_prog = bv_program_create(bytecode.data());
@@ -30,7 +35,7 @@ namespace sd
 					return false; // invalid bytecode
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
-				//m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, NULL);
+				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, NULL);
 				
 				if (m_library != nullptr)
 					bv_program_add_library(m_prog, library);
@@ -42,6 +47,11 @@ namespace sd
 		inline bv_variable Execute() { return Execute(m_entry); }
 		bv_variable Execute(const std::string& func); // TODO: arguments
 
+
+		std::string GetCurrentFunction();
+		std::vector<std::string> GetFunctionStack();
+		std::vector<std::string> GetCurrentFunctionLocals();
+		bv_variable* GetLocalValue(const std::string& varname);
 		int GetCurrentLine() { return m_prog->current_line; }
 		bool Step();
 
@@ -53,6 +63,7 @@ namespace sd
 		bv_variable* GetValue(const std::string& gvarname);
 
 	private:
+		Translator* m_transl;
 		std::string m_entry;
 		bv_library* m_library;
 		bv_program* m_prog;

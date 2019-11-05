@@ -3,6 +3,7 @@
 GLSL BlueVM implementation:
 - convert values when assigning: float a = 2; will store int and not a float...
 - initialize global variables (vec3, etc...)
+- allow for external operator overloading (BlueVM)
 - test casting int(3.2f) == 3
 - test constructors
 - test constructor for built in types
@@ -12,6 +13,7 @@ GLSL BlueVM implementation:
 - field swizzling
 - Execute arguments
 
+- infinite loop detection
 
 This code crashes(??? but it doesn't if I don't use 0.9f):
 out float outColor;

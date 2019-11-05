@@ -9,4 +9,6 @@ extern "C" {
 namespace sd
 {
 	glm::vec3 AsVec3(const bv_variable& var);
+	float AsFloat(const bv_variable& var);
+	int AsInteger(const bv_variable& var);
 }

@@ -75,14 +75,15 @@ namespace sd
 	private:
 		int m_lastLineSaved; // dont add OpCode::DebugLine for every expression, but rather only when astNode->line != m_lastLineSaved
 		template<typename T>
-		inline void m_exportLine(glsl::astNode<T>* node)
+		inline void m_exportLine(glsl::astNode<T>* node, bool force = false)
 		{
-			if (m_lastLineSaved != node->line) {
+			if (m_lastLineSaved != node->line || force) {
 				m_gen.Function.DebugLineNumber(node->line);
 				m_lastLineSaved = node->line;
 			}
 		}
 
+		std::unordered_map<std::string, std::string> m_initObjsInMain;
 		std::unordered_map<std::string, glsl::astConstantExpression*> m_initInMain;
 		std::unordered_map<std::string, glsl::vector<glsl::astConstantExpression*>> m_initArraysInMain; // global arrays
 		std::string m_currentFunction, m_entryFunction;

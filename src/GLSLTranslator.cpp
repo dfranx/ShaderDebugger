@@ -171,6 +171,9 @@ namespace sd
 		else
 			var.Type = ((glsl::astStruct*)variable->baseType)->name;
 
+		if (isTypeActuallyStruct(var.Type))
+			m_initObjsInMain[var.Name] = var.Type;
+
 		// TODO: global arrays
 		if (variable->isArray)
 			m_initArraysInMain[var.Name] = variable->arraySizes;
@@ -632,8 +635,6 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateForStatement(glsl::astForStatement *statement) {
-		m_exportLine(statement);
-		
 		m_breaks.push(std::vector<size_t>());
 
 		if (statement->init) {
@@ -659,6 +660,8 @@ namespace sd
 		size_t body_start = m_gen.Function.Goto();
 		m_continueAddr.push(m_gen.Function.GetCurrentAddress());
 
+		m_exportLine(statement, true);
+		
 		// the third part of for loop
 		if (statement->loop)
 			translateExpression(statement->loop);
@@ -778,6 +781,17 @@ namespace sd
 
 		// initialize global variables at the start of main()
 		if (func.Name == m_entryFunction) {
+			// create global objects (vec3, etc..)
+			for (auto& gInitClass : m_initObjsInMain) {
+				size_t varID = 0;
+				for (auto& gVar : m_globals)
+					if (gVar.Name == gInitClass.first)
+						varID = gVar.ID;
+				m_gen.Function.NewObjectByName(gInitClass.second, 0); // TODO: hm?
+				m_gen.Function.SetGlobal(varID);
+			}
+
+			// init array
 			for (auto& gArray : m_initArraysInMain) {
 				if (gArray.second.size() > 0) {
 					translateArraySize(gArray.second);
@@ -790,6 +804,8 @@ namespace sd
 					m_gen.Function.SetGlobal(varID);
 				}
 			}
+
+			// init in main
 			for (auto& gInit : m_initInMain) {
 				if (gInit.second != nullptr) {
 					translateExpression(gInit.second);

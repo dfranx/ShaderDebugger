@@ -787,8 +787,13 @@ namespace sd
 				for (auto& gVar : m_globals)
 					if (gVar.Name == gInitClass.first)
 						varID = gVar.ID;
-				m_gen.Function.NewObjectByName(gInitClass.second, 0); // TODO: hm?
-				m_gen.Function.SetGlobal(varID);
+				m_gen.Function.GetGlobal(varID);
+				m_gen.Function.PushNull();
+				m_gen.Function.Equal();
+				size_t ifPos = m_gen.Function.If(); // if global == null then initialize
+					m_gen.Function.NewObjectByName(gInitClass.second, 0);
+					m_gen.Function.SetGlobal(varID);
+				m_gen.Function.SetAddress(ifPos, m_gen.Function.GetCurrentAddress());
 			}
 
 			// init array

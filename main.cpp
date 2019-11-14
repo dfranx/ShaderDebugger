@@ -34,7 +34,7 @@ int main() {
 	dbg.SetValue("iFactor", 0.7f);
 
 	// TODO: it crashes if iColor is not used but declared
-	// dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
+	dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
 
 	// TODO: dbg.GetGlobalList() -> "Please enter value for iFactor"
 	// TODO: iColor is == vec3(0) for some reason
@@ -57,7 +57,7 @@ int main() {
 				if (i == curLine)
 					printf(">>>> | %s\n", srcLines[i].c_str());
 				else
-					printf("%4d | %s\n", i, srcLines[i].c_str());
+					printf("%4d | %s\n", i+1, srcLines[i].c_str());
 			}
 			hasStepped = false;
  		}
@@ -90,12 +90,10 @@ int main() {
 				hasStepped = true;
 			}
 		}
-		else if (tokens[0] == "getlocal" || tokens[0] == "getglobal") { // getlocal name
+		else if (tokens[0] == "get") { // getlocal name
 			if (tokens.size() > 1) {
-				bv_variable* val = nullptr;
-				if (tokens[0] == "getlocal")
-					val = dbg.GetLocalValue(tokens[1]);
-				else if (tokens[0] == "getglobal")
+				bv_variable* val = dbg.GetLocalValue(tokens[1]);
+				if (val == nullptr)
 					val = dbg.GetValue(tokens[1]);
 
 				if (val != nullptr) {

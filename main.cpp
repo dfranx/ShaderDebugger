@@ -32,12 +32,9 @@ int main() {
 	sd::ShaderDebugger dbg;
 	dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", sd::Library::GLSL());
 	dbg.SetValue("iFactor", 0.7f);
-
-	// TODO: it crashes if iColor is not used but declared
 	dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
 
 	// TODO: dbg.GetGlobalList() -> "Please enter value for iFactor"
-	// TODO: iColor is == vec3(0) for some reason
 
 	std::vector<std::string> srcLines = SplitString(src, "\n");
 
@@ -74,6 +71,14 @@ int main() {
 			break;
 		else if (tokens[0] == "step") {
 			bool ret = dbg.Step();
+			if (!ret) {
+				printf("Finished debugging!\n");
+				break;
+			}
+			hasStepped = true;
+		}
+		else if (tokens[0] == "stepover") {
+			bool ret = dbg.StepOver();
 			if (!ret) {
 				printf("Finished debugging!\n");
 				break;

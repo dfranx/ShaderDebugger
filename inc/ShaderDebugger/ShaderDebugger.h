@@ -54,6 +54,7 @@ namespace sd
 		bv_variable* GetLocalValue(const std::string& varname);
 		int GetCurrentLine() { return m_prog->current_line; }
 		bool Step();
+		bool StepOver();
 
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)
 		// this makes ShaderDebugger work without needing to know which shader language it uses

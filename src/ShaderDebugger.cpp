@@ -126,4 +126,18 @@ namespace sd
 
 		return !done;
 	}
+	bool ShaderDebugger::StepOver()
+	{
+		std::vector<std::string> fstack = GetFunctionStack(), updatedFStack;
+		
+		bool done = Step();
+		updatedFStack = GetFunctionStack();
+
+		while (updatedFStack.size() > fstack.size()) {
+			done = Step();
+			updatedFStack = GetFunctionStack();
+		}
+
+		return done;
+	}
 }

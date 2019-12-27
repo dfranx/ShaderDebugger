@@ -325,8 +325,11 @@ namespace sd
 
 		if (!vdata->baseType->builtin) {
 			std::string structName = ((glsl::astStruct*)vdata->baseType)->name;
-			m_gen.Function.NewObjectByName(structName);
-			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+
+			if (!variable->initialValue) {
+				m_gen.Function.NewObjectByName(structName);
+				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+			}
 
 			printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
 		}
@@ -334,8 +337,11 @@ namespace sd
 			std::string structName = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
 
 			if (isTypeActuallyStruct(structName)) {
-				m_gen.Function.NewObjectByName(structName, 0);
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				if (!variable->initialValue) {
+					m_gen.Function.NewObjectByName(structName, 0);
+					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				}
+
 				printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
 			}
 		}
@@ -876,14 +882,15 @@ namespace sd
 		if (statement->expression)
 			translateExpression(statement->expression);
 
-		for (const auto& f : m_func) {
-			if (f.Name == m_currentFunction) {
-				ag::Type rType = m_convertBaseType(f.ReturnType);
-				if (rType != ag::Type::Void) // TODO: check if typeof(expr) != typeof(funcRet)
-					m_gen.Function.Convert(rType);
-				break;
+		if (statement->expression)
+			for (const auto& f : m_func) {
+				if (f.Name == m_currentFunction) {
+					ag::Type rType = m_convertBaseType(f.ReturnType);
+					if (rType != ag::Type::Void) // TODO: check if typeof(expr) != typeof(funcRet)
+						m_gen.Function.Convert(rType);
+					break;
+				}
 			}
-		}
 
 		m_gen.Function.Return();
 	}

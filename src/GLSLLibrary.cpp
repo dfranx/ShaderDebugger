@@ -27,6 +27,83 @@ namespace sd
 			return bv_variable_create_void();
 		}
 
+		/* vec3() + ... */
+		bv_variable lib_vec3_operator_add(bv_object* obj, u8 count, bv_variable* args)
+		{
+			float myX = bv_variable_get_float(*bv_object_get_property(obj, "x"));
+			float myY = bv_variable_get_float(*bv_object_get_property(obj, "y"));
+			float myZ = bv_variable_get_float(*bv_object_get_property(obj, "z"));
+
+			bv_variable ret = bv_variable_create_object(obj->type);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			if (count == 1) {
+				// vec3 + vec3
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					if (strcmp(vec->type->name, "vec3") == 0) {
+						float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
+						float vecY = bv_variable_get_float(*bv_object_get_property(vec, "y"));
+						float vecZ = bv_variable_get_float(*bv_object_get_property(vec, "z"));
+
+						bv_object_set_property(retObj, "x", bv_variable_create_float(myX + vecX));
+						bv_object_set_property(retObj, "y", bv_variable_create_float(myY + vecY));
+						bv_object_set_property(retObj, "z", bv_variable_create_float(myZ + vecZ));
+					}
+				}
+
+				// vec3 + scalar
+				else {
+					bv_variable temp = bv_variable_cast(bv_type_float, args[0]);
+					float sVal = bv_variable_get_float(temp);
+
+					bv_object_set_property(retObj, "x", bv_variable_create_float(myX + sVal));
+					bv_object_set_property(retObj, "y", bv_variable_create_float(myY + sVal));
+					bv_object_set_property(retObj, "z", bv_variable_create_float(myZ + sVal));
+
+					bv_variable_deinitialize(&temp);
+				}
+			}
+
+			return ret;
+		}
+		bv_variable lib_vec3_operator_equal(bv_object* obj, u8 count, bv_variable* args)
+		{
+			float myX = bv_variable_get_float(*bv_object_get_property(obj, "x"));
+			float myY = bv_variable_get_float(*bv_object_get_property(obj, "y"));
+			float myZ = bv_variable_get_float(*bv_object_get_property(obj, "z"));
+
+			bv_variable ret = bv_variable_create_uchar(0);
+
+			if (count == 1) {
+				// vec3 == vec3
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					if (strcmp(vec->type->name, "vec3") == 0) {
+						float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
+						float vecY = bv_variable_get_float(*bv_object_get_property(vec, "y"));
+						float vecZ = bv_variable_get_float(*bv_object_get_property(vec, "z"));
+
+						bv_variable_set_uchar(&ret, myX == vecX && myY == vecY && myZ == vecZ);
+					}
+				}
+
+				// vec3 + scalar
+				else {
+					bv_variable temp = bv_variable_cast(bv_type_float, args[0]);
+					float sVal = bv_variable_get_float(temp);
+
+					bv_variable_set_uchar(&ret, myX == sVal && myY == sVal && myZ == sVal);
+
+					bv_variable_deinitialize(&temp);
+				}
+			}
+
+			return ret;
+		}
+
 		/* floor() */
 		bv_variable lib_floor(u8 count, bv_variable* args)
 		{
@@ -66,6 +143,8 @@ namespace sd
 			bv_object_info_add_property(vec3, "y");
 			bv_object_info_add_property(vec3, "z");
 			bv_object_info_add_ext_method(vec3, "vec3", lib_vec3_constructor);
+			bv_object_info_add_ext_method(vec3, "==", lib_vec3_operator_equal);
+			bv_object_info_add_ext_method(vec3, "+", lib_vec3_operator_add);
 			bv_library_add_object_info(lib, vec3);
 
 			// floor()

@@ -58,6 +58,9 @@ int main() {
 		}
 	}
 
+	// skip initialization
+	dbg.Step();
+
 	std::vector<std::string> srcLines = SplitString(src, "\n");
 
 	// debugger

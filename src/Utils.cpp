@@ -1,4 +1,5 @@
 #include <ShaderDebugger/Utils.h>
+#include <string.h>
 
 namespace sd
 {

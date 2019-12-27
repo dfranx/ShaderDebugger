@@ -25,12 +25,11 @@ namespace sd
 			m_entry = entry;
 			m_library = library;
 
-			CodeTranslator tr;
 			bool done = m_transl->Parse(stage, src, entry);
-			std::vector<uint8_t> bytecode = m_transl->GetBytecode();
+			m_bytecode = m_transl->GetBytecode();
 			
-			if (done && bytecode.size() > 0) {
-				m_prog = bv_program_create(bytecode.data());
+			if (done && m_bytecode.size() > 0) {
+				m_prog = bv_program_create(m_bytecode.data());
 				if (m_prog == nullptr)
 					return false; // invalid bytecode
 					
@@ -69,5 +68,6 @@ namespace sd
 		bv_library* m_library;
 		bv_program* m_prog;
 		bv_function_stepper* m_stepper;
+		std::vector<uint8_t> m_bytecode;
 	};
 }

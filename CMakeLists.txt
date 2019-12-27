@@ -9,7 +9,7 @@ set(SOURCES
 	main.cpp
 	src/Utils.cpp
 	src/GLSLLibrary.cpp
-    src/GLSLTranslator.cpp
+	src/GLSLTranslator.cpp
 	src/ShaderDebugger.cpp
 	
 # glsl-parser
@@ -19,7 +19,7 @@ set(SOURCES
 	libs/glsl-parser/parser.cpp
 	libs/glsl-parser/util.cpp
 
-
+# BlueVM
 	libs/BlueVM/src/bv_array.c
 	libs/BlueVM/src/bv_block.c
 	libs/BlueVM/src/bv_constant_pool.c
@@ -43,13 +43,13 @@ set(SOURCES
 	libs/BlueVM/src/types.c
 )
 
-# glm
-find_package(GLM REQUIRED)
-
 # cmake toolchain 
 if(CMAKE_TOOLCHAIN_FILE)
     include(${CMAKE_TOOLCHAIN_FILE})
 endif(CMAKE_TOOLCHAIN_FILE)
+
+# glm
+find_package(GLM REQUIRED)
 
 # create executable
 add_executable(ShaderDebugger ${SOURCES})
@@ -61,7 +61,8 @@ set_target_properties(ShaderDebugger PROPERTIES
 )
 
 # include directories
-target_include_directories(ShaderDebugger PRIVATE ${GLM_INCLUDE_DIRS} inc libs libs/BlueVM/inc)
+target_include_directories(ShaderDebugger PRIVATE ${GLM_INCLUDE_DIRS})
+target_include_directories(ShaderDebugger PRIVATE inc libs libs/BlueVM/inc)
 
 # link libraries
 target_link_libraries(ShaderDebugger ${GLM_LIBRARY_DIRS})

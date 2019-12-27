@@ -21,7 +21,7 @@ namespace sd
 
 		int shaderType = glsl::astTU::kVertex;
 		if (type == ShaderType::Pixel)
-			shaderType == glsl::astTU::kFragment;
+			shaderType = glsl::astTU::kFragment;
 
         glsl::parser p(source.c_str(), "memory");
         glsl::astTU *tu = p.parse(shaderType);

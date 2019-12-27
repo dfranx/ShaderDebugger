@@ -876,6 +876,15 @@ namespace sd
 		if (statement->expression)
 			translateExpression(statement->expression);
 
+		for (const auto& f : m_func) {
+			if (f.Name == m_currentFunction) {
+				ag::Type rType = m_convertBaseType(f.ReturnType);
+				if (rType != ag::Type::Void) // TODO: check if typeof(expr) != typeof(funcRet)
+					m_gen.Function.Convert(rType);
+				break;
+			}
+		}
+
 		m_gen.Function.Return();
 	}
 
@@ -929,6 +938,11 @@ namespace sd
 		func.ID = m_gen.Function.Create(function->name, function->parameters.size());
 		func.Name = m_currentFunction = function->name;
 		func.Arguments.clear();
+
+		if (function->returnType->builtin)
+			func.ReturnType = kTypes[((glsl::astBuiltin*)function->returnType)->type];
+		else
+			func.ReturnType = ((glsl::astStruct*)function->returnType)->name;
 
 		for (size_t i = 0; i < function->parameters.size(); i++) {
 			glsl::astFunctionParameter* param = function->parameters[i];

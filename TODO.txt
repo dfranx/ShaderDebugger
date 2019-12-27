@@ -1,11 +1,10 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- bv_opcode_cast return variable
-- bv_opcode_cast when assigning, bv_opcode_cast when calling functions but only required arguments
-- allow for external operator overloading (BlueVM)
+- allow for external operator overloading (BlueVM) -> vec3 + vec3 for example
 - test casting int(3.2f) == 3
 - add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
+- bv_opcode_cast when calling functions but only required arguments (tip: have a list of all defined functions and their arg type)
 - field swizzling
 - Execute() with arguments
 - GLSL bv_library

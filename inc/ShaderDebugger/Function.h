@@ -9,6 +9,7 @@ namespace sd
 		size_t ID;
 
 		std::string Name;
+		std::string ReturnType;
 		std::vector<Variable> Arguments;
 	};
 }

@@ -81,12 +81,14 @@ namespace sd
 				if (args[0].type == bv_type_object) {
 					bv_object* vec = bv_variable_get_object(args[0]);
 
-					if (strcmp(vec->type->name, "vec3") == 0) {
-						float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
-						float vecY = bv_variable_get_float(*bv_object_get_property(vec, "y"));
-						float vecZ = bv_variable_get_float(*bv_object_get_property(vec, "z"));
+					if (vec != nullptr) {
+						if (strcmp(vec->type->name, "vec3") == 0) {
+							float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
+							float vecY = bv_variable_get_float(*bv_object_get_property(vec, "y"));
+							float vecZ = bv_variable_get_float(*bv_object_get_property(vec, "z"));
 
-						bv_variable_set_uchar(&ret, myX == vecX && myY == vecY && myZ == vecZ);
+							bv_variable_set_uchar(&ret, myX == vecX && myY == vecY && myZ == vecZ);
+						}
 					}
 				}
 

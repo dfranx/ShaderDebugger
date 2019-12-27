@@ -280,7 +280,7 @@ namespace sd
 
 	void GLSLTranslator::translateFunctionCall(glsl::astFunctionCall *expression) {
 		m_exportLine(expression);
-		
+				
 		for (int i = expression->parameters.size()-1; i >= 0; i--)
 			translateExpression(expression->parameters[i]);
 		m_gen.Function.CallReturn(expression->name, expression->parameters.size());
@@ -296,8 +296,14 @@ namespace sd
 			std::string tName = kTypes[((glsl::astBuiltin*)expression->type)->type];
 			if (isTypeActuallyStruct(tName))
 				m_gen.Function.NewObjectByName(tName, expression->parameters.size());
-			else
-				m_gen.Function.CallReturn(tName, expression->parameters.size()); // casting: int(3.2f)
+			else {
+				ag::Type btype = m_convertBaseType(tName);
+
+				if (btype != ag::Type::Void)
+					m_gen.Function.Convert(btype);
+				else
+					m_gen.Function.CallReturn(tName, expression->parameters.size()); // casting: int(3.2f)
+			}
 		} else {
 			// TODO: push new object
 			printf("[DEBUG] Calling %s constructor...\n", ((glsl::astStruct*)expression->type)->name);

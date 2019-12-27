@@ -1,13 +1,14 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- test casting int(3.2f) == 3
 - add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
 - bv_opcode_cast when calling user-defined functions but only cast arguments that don't match the argument type
 - field swizzling
 - Execute() with arguments
 - samplers
+- test gl_FragCoord, etc...
 - finish GLSL bv_library
 - implement $$discard function
-- breakpoints (maybe conditioned breakpoints?)
+- breakpoints (maybe conditional breakpoints?)
+- #define & #version
 - HLSL compiler

@@ -37,10 +37,26 @@ int main() {
 		return 1;
 	}
 	
-	dbg.SetValue("iFactor", 0.7f);
-	dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
+	// initialize globals
+	const auto& globals = dbg.GetTranslator()->GetGlobals();
+	for (const auto& global : globals)
+	{
+		if (global.Storage == sd::Variable::StorageType::Uniform ||
+			global.Storage == sd::Variable::StorageType::In)
+		{
+			printf("Please enter value for %s %s: ", global.Type.c_str(), global.Name.c_str());
 
-	// TODO: dbg.GetGlobalList() -> "Please enter value for iFactor"
+			if (global.Type == "float") {
+				float val;
+				scanf("%f", &val);
+				dbg.SetValue(global.Name, val);
+			} else if (global.Type == "vec3") {
+				float x,y,z;
+				scanf("%f %f %f", &x,&y,&z);
+				dbg.SetValue(global.Name, "vec3", glm::vec3(x,y,z));
+			}
+		}
+	}
 
 	std::vector<std::string> srcLines = SplitString(src, "\n");
 

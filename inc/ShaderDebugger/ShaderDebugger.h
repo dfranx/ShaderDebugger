@@ -24,6 +24,8 @@ namespace sd
 
 			m_entry = entry;
 			m_library = library;
+			m_prog = nullptr;
+			m_stepper = nullptr;
 
 			bool done = m_transl->Parse(stage, src, entry);
 			m_bytecode = m_transl->GetBytecode();
@@ -34,6 +36,9 @@ namespace sd
 					return false; // invalid bytecode
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
+				if (entryPtr == nullptr)
+					return false;
+
 				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, NULL);
 				
 				if (m_library != nullptr)
@@ -42,6 +47,8 @@ namespace sd
 
 			return true;
 		}
+
+		inline Translator* GetTranslator() { return m_transl; }
 
 		inline bv_variable Execute() { return Execute(m_entry); }
 		bv_variable Execute(const std::string& func); // TODO: arguments
@@ -64,6 +71,8 @@ namespace sd
 		bv_variable* GetValue(const std::string& gvarname);
 
 	private:
+		Function m_getFunctionInfo(const std::string& fname);
+
 		Translator* m_transl;
 		std::string m_entry;
 		bv_library* m_library;

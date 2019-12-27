@@ -99,10 +99,21 @@ namespace sd
 		bv_scope* scope = m_stepper->scope;
 		std::string curFunc = GetCurrentFunction();
 		const auto& locList = m_transl->GetLocals(curFunc);
+		auto argList = m_getFunctionInfo(GetCurrentFunction()).Arguments;
+
+		for (u32 i = 0; i < argList.size(); i++)
+			if (argList[i].Name == varname) {
+				u32 index = bv_scope_get_locals_start(scope) + i;
+
+				if (index >= scope->locals.length)
+					return nullptr;
+
+				return &scope->locals.data[index];
+			}
 
 		for (u32 i = 0; i < locList.size(); i++)
 			if (locList[i] == varname) {
-				u32 index = bv_scope_get_locals_start(scope)+i;
+				u32 index = bv_scope_get_locals_start(scope)+i+argList.size();
 
 				if (index >= scope->locals.length)
 					return nullptr;
@@ -146,5 +157,16 @@ namespace sd
 		}
 
 		return done;
+	}
+
+	Function ShaderDebugger::m_getFunctionInfo(const std::string& fname)
+	{
+		const auto& funcs = m_transl->GetFunctions();
+		for (const auto& func : funcs) {
+			if (func.Name == fname)
+				return func;
+		}
+
+		return { 0, "", {} };
 	}
 }

@@ -30,7 +30,13 @@ int main() {
 	t.close();
 
 	sd::ShaderDebugger dbg;
-	dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", sd::Library::GLSL());
+	bool res = dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", sd::Library::GLSL());
+	
+	if (!res) {
+		printf("[ERROR] Failed to compile the shader.\n");
+		return 1;
+	}
+	
 	dbg.SetValue("iFactor", 0.7f);
 	dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
 
@@ -88,7 +94,7 @@ int main() {
 		else if (tokens[0] == "jump") {
 			if (tokens.size() > 1) {
 				int lnGoal = std::stoi(tokens[1]);
-				dbg.JumpTo(lnGoal);
+				dbg.Jump(lnGoal);
 				hasStepped = true;
 			}
 		}

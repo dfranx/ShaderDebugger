@@ -162,6 +162,17 @@ namespace sd
 			var.NoPerspective = true;
 			break;
 		}
+
+		switch (variable->storage) {
+		case glsl::kConst: var.Storage = Variable::StorageType::Constant; break;
+		case glsl::kIn: var.Storage = Variable::StorageType::In; break;
+		case glsl::kOut: var.Storage = Variable::StorageType::Out; break;
+		case glsl::kAttribute: var.Storage = Variable::StorageType::Attribute; break;
+		case glsl::kUniform: var.Storage = Variable::StorageType::Uniform; break;
+		case glsl::kVarying: var.Storage = Variable::StorageType::Varying; break;
+		case glsl::kBuffer: var.Storage = Variable::StorageType::Buffer; break;
+		case glsl::kShared: var.Storage = Variable::StorageType::Shared; break;
+		}
 		
 
 		glsl::astVariable* varData = (glsl::astVariable*)variable;
@@ -177,7 +188,6 @@ namespace sd
 		// TODO: global arrays
 		if (variable->isArray)
 			m_initArraysInMain[var.Name] = variable->arraySizes;
-
 
 		// generate bytecode
 		var.ID = m_gen.AddGlobal(varData->name);

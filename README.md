@@ -56,7 +56,7 @@ while (vs.Step()) {
 List of things that currently don't work but I plan to fix them:
 ### GLSL
 - doesn't support macros, interface blocks, local & structure member arrays & global variable initalization (unless it has const keyword)
-- parsed, but not stored & not implemented: storage, auxilary, precision, memory, invariant
+- parsed, but not stored & not implemented: auxilary, precision, memory, invariant
 - parsed & stored but not implemented: smooth, flat, noperspective
 
 ### HLSL

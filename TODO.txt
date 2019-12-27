@@ -5,10 +5,8 @@ GLSL BlueVM implementation:
 - initialize global variables (vec3, etc...)
 - allow for external operator overloading (BlueVM)
 - test casting int(3.2f) == 3
-- test constructors
-- test constructor for built in types
-- GLSL bv_library
-- implement $$discard function
 - add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
 - field swizzling
 - Execute() with arguments
+- GLSL bv_library
+- implement $$discard function

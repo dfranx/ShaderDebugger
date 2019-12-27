@@ -4,8 +4,30 @@
 
 namespace sd
 {
-	struct Variable
+	class Variable
 	{
+	public:
+		Variable()
+		{
+			ID = InputSlot = 0;
+			Name = Type = "";
+			Smooth = Flat = NoPerspective = false;
+			Storage = StorageType::None;
+		}
+
+		enum class StorageType
+		{
+			None,
+			Constant,
+			In,
+			Out,
+			Attribute,
+			Uniform,
+			Varying,
+			Buffer,
+			Shared
+		} Storage;
+
 		size_t ID;
 
 		size_t InputSlot;

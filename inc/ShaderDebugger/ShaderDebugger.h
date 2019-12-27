@@ -52,6 +52,7 @@ namespace sd
 		std::vector<std::string> GetCurrentFunctionLocals();
 		bv_variable* GetLocalValue(const std::string& varname);
 		int GetCurrentLine() { return m_prog->current_line; }
+		void Jump(int line);
 		bool Step();
 		bool StepOver();
 

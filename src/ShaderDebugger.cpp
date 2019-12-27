@@ -111,6 +111,13 @@ namespace sd
 			}
 		return nullptr;
 	}
+	void ShaderDebugger::Jump(int line)
+	{
+		while (Step()) {
+			if (GetCurrentLine() == line)
+				break;
+		}
+	}
 	bool ShaderDebugger::Step()
 	{
 		bool done = bv_function_stepper_is_done(m_stepper);

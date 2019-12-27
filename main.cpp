@@ -88,10 +88,7 @@ int main() {
 		else if (tokens[0] == "jump") {
 			if (tokens.size() > 1) {
 				int lnGoal = std::stoi(tokens[1]);
-				while (dbg.Step()) {
-					if (dbg.GetCurrentLine()-1 == lnGoal)
-						break;
-				}
+				dbg.JumpTo(lnGoal);
 				hasStepped = true;
 			}
 		}

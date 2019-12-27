@@ -1,25 +1,14 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- convert values when assigning: float a = 2; will store int and not a float...
+- convert values when assigning: float a = 2; should store float and not an integer... bv_opcode_cast when assigning and arguments when calling functions
 - initialize global variables (vec3, etc...)
 - allow for external operator overloading (BlueVM)
 - test casting int(3.2f) == 3
 - test constructors
 - test constructor for built in types
-- implement $$discard function
 - GLSL bv_library
+- implement $$discard function
 - add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading
 - field swizzling
-- Execute arguments
-
-- infinite loop detection
-
-This code crashes(??? but it doesn't if I don't use 0.9f):
-out float outColor;
-
-void main()
-{
-	float test = vec3(0.9f, 1.5f, 1.4f).x;
-	outColor = test;
-}
+- Execute() with arguments

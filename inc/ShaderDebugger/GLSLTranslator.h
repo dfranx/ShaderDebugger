@@ -72,6 +72,9 @@ namespace sd
 			return !(t == "void" || t == "bool" || t == "int" || t == "uint" || t == "float" || t == "double");
 		}
 
+		ag::Type evaluateType(glsl::astExpression* expr);
+		ag::Type evaluateBaseType(glsl::astExpression* expr);
+
 	private:
 		int m_lastLineSaved; // dont add OpCode::DebugLine for every expression, but rather only when astNode->line != m_lastLineSaved
 		template<typename T>
@@ -82,6 +85,9 @@ namespace sd
 				m_lastLineSaved = node->line;
 			}
 		}
+
+		ag::Type m_convertBaseType(const std::string& str);
+		ag::Type m_convertType(const std::string& str);
 
 		std::unordered_map<std::string, std::string> m_initObjsInMain;
 		std::unordered_map<std::string, glsl::astConstantExpression*> m_initInMain;

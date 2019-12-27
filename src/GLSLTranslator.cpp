@@ -314,6 +314,11 @@ namespace sd
 
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
+
+			ag::Type cType = m_convertBaseType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
+			if (cType != ag::Type::Void)
+				m_gen.Function.Convert(cType);
+
 			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 		}
 
@@ -430,11 +435,166 @@ namespace sd
 			m_gen.Function.BitXor();
 		else if (expression->assignment == glsl::kOperator_bit_xor_assign)
 			m_gen.Function.BitOr();
+
+		ag::Type lhsType = evaluateBaseType(expression->operand1);
+		if (lhsType != ag::Type::Void) // TODO: only cast when typeof(lhs) != typeof(rhs)
+			m_gen.Function.Convert(lhsType);
 			
 		m_isSet = true;
 		translateExpression(expression->operand1); // lhs
 		m_isSet = false;
 	}
+
+	ag::Type GLSLTranslator::evaluateType(glsl::astExpression* expr)
+	{
+		switch (expr->type) {
+		case glsl::astExpression::kVariableIdentifier: {
+			glsl::astVariableIdentifier* varexpr = (glsl::astVariableIdentifier*)expr;
+			std::string vartype = "";
+			if (varexpr->variable->baseType->builtin)
+				vartype = kTypes[((glsl::astBuiltin*)varexpr->variable->baseType)->type];
+			else
+				vartype = ((glsl::astStruct*)varexpr->variable->baseType)->name;
+
+			return m_convertType(vartype);
+		}
+		case glsl::astExpression::kFieldOrSwizzle:
+		{
+			glsl::astFieldOrSwizzle* field = (glsl::astFieldOrSwizzle*)expr;
+			ag::Type structBType = evaluateType(field->operand);
+
+			if (structBType == ag::Type::Void) {
+				// user defined structure
+				printf("[DEBUG] evauluateType user defined structure.\n");
+				for (const auto& s : m_structures)
+					for (const auto& m : s.Members)
+						if (m.Name == field->name)
+							return m_convertType(m.Type);
+			}
+			else return structBType;
+		}
+		case glsl::astExpression::kArraySubscript:
+		{
+			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
+			return evaluateType(arr->operand);
+		}
+		}
+
+		return ag::Type::Void;
+	}
+	ag::Type GLSLTranslator::evaluateBaseType(glsl::astExpression* expr)
+	{
+		switch (expr->type) {
+		case glsl::astExpression::kVariableIdentifier: {
+			glsl::astVariableIdentifier* varexpr = (glsl::astVariableIdentifier*)expr;
+			std::string vartype = "";
+			if (varexpr->variable->baseType->builtin)
+				vartype = kTypes[((glsl::astBuiltin*)varexpr->variable->baseType)->type];
+			else
+				vartype = "void";
+
+			return m_convertBaseType(vartype);
+		}
+		case glsl::astExpression::kFieldOrSwizzle:
+		{
+			glsl::astFieldOrSwizzle* field = (glsl::astFieldOrSwizzle*)expr;
+			ag::Type structBType = evaluateType(field->operand);
+
+			if (structBType == ag::Type::Void) {
+				// user defined structure
+				printf("[DEBUG] evauluateType user defined structure.\n");
+				for (const auto& s : m_structures)
+					for (const auto& m : s.Members)
+						if (m.Name == field->name)
+							return m_convertBaseType(m.Type);
+			}
+			else if (strlen(field->name) == 1) return structBType;
+		}
+		case glsl::astExpression::kArraySubscript:
+		{
+			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
+			return evaluateBaseType(arr->operand);
+		}
+		}
+
+		return ag::Type::Void;
+	}
+
+	ag::Type GLSLTranslator::m_convertType(const std::string& str)
+	{
+		static const std::vector<std::string> floatStructs = {
+			KEYWORD(mat2)
+			KEYWORD(mat3)
+			KEYWORD(mat4)
+			KEYWORD(mat2x2)
+			KEYWORD(mat2x3)
+			KEYWORD(mat2x4)
+			KEYWORD(mat3x2)
+			KEYWORD(mat3x3)
+			KEYWORD(mat3x4)
+			KEYWORD(mat4x2)
+			KEYWORD(mat4x3)
+			KEYWORD(mat4x4)
+			KEYWORD(vec2)
+			KEYWORD(vec3)
+			KEYWORD(vec4)
+		};
+		static const std::vector<std::string> doubleStructs = {
+			KEYWORD(dmat2)
+			KEYWORD(dmat3)
+			KEYWORD(dmat4)
+			KEYWORD(dmat2x2)
+			KEYWORD(dmat2x3)
+			KEYWORD(dmat2x4)
+			KEYWORD(dmat3x2)
+			KEYWORD(dmat3x3)
+			KEYWORD(dmat3x4)
+			KEYWORD(dmat4x2)
+			KEYWORD(dmat4x3)
+			KEYWORD(dmat4x4)
+			KEYWORD(dvec2)
+			KEYWORD(dvec3)
+			KEYWORD(dvec4)
+		};
+		static const std::vector<std::string> intStructs = {
+			KEYWORD(ivec2)
+			KEYWORD(ivec3)
+			KEYWORD(ivec4)
+		};
+		static const std::vector<std::string> boolStructs = {
+			KEYWORD(bvec2)
+			KEYWORD(bvec3)
+			KEYWORD(bvec4)
+		};
+		static const std::vector<std::string> uintStructs = {
+			KEYWORD(uvec2)
+			KEYWORD(uvec3)
+			KEYWORD(uvec4)
+		};
+
+		if (str == "float" || std::count(floatStructs.begin(), floatStructs.end(), str) > 0) return ag::Type::Float;
+		if (str == "int" || std::count(intStructs.begin(), intStructs.end(), str) > 0) return ag::Type::Int;
+		if (str == "bool" || std::count(boolStructs.begin(), boolStructs.end(), str) > 0) return ag::Type::UChar;
+		if (str == "uint" || std::count(uintStructs.begin(), uintStructs.end(), str) > 0) return ag::Type::UInt;
+
+		// TODO: oops, BlueVM doesn't support doubles (?)
+		if (str == "double" || std::count(doubleStructs.begin(), doubleStructs.end(), str) > 0) return ag::Type::Float;
+
+		return ag::Type::Void;
+	}
+	ag::Type GLSLTranslator::m_convertBaseType(const std::string& str)
+	{
+		if (str == "float") return ag::Type::Float;
+		if (str == "int") return ag::Type::Int;
+		if (str == "bool") return ag::Type::UChar;
+		if (str == "uint") return ag::Type::UInt;
+
+		// TODO: oops, BlueVM doesn't support doubles (?)
+		if (str == "double") return ag::Type::Float;
+
+		return ag::Type::Void;
+	}
+
 
 	void GLSLTranslator::translateSequence(glsl::astSequenceExpression *expression) {
 		m_exportLine(expression);

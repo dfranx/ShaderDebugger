@@ -1,7 +1,8 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- convert values when assigning: float a = 2; should store float and not an integer... bv_opcode_cast when assigning, bv_opcode_cast when calling functions but only required arguments
+- bv_opcode_cast return variable
+- bv_opcode_cast when assigning, bv_opcode_cast when calling functions but only required arguments
 - allow for external operator overloading (BlueVM)
 - test casting int(3.2f) == 3
 - add argument types to function definitions in the bytecode (increase BVM version to 0.2) & function overloading

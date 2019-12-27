@@ -60,6 +60,7 @@ int main() {
 
 	std::vector<std::string> srcLines = SplitString(src, "\n");
 
+	// debugger
 	bool hasStepped = true;
 	while (true) {
 		int curLine = dbg.GetCurrentLine()-1;

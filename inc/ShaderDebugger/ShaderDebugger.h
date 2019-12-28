@@ -2,6 +2,8 @@
 #include <ShaderDebugger/Translator.h>
 #include <glm/glm.hpp>
 
+#include <fstream>
+
 extern "C" {
 	#include <BlueVM.h>
 }
@@ -29,7 +31,7 @@ namespace sd
 
 			bool done = m_transl->Parse(stage, src, entry);
 			m_bytecode = m_transl->GetBytecode();
-			
+
 			if (done && m_bytecode.size() > 0) {
 				m_prog = bv_program_create(m_bytecode.data());
 				if (m_prog == nullptr)

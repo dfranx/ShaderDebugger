@@ -17,7 +17,7 @@ namespace sd
 		m_caseIfDefault = false;
 		m_caseIfAddr = 0;
 		m_entryFunction = entry;
-		m_gen.SetHeader(0, 1);
+		m_gen.SetHeader(0, 2);
 
 		int shaderType = glsl::astTU::kVertex;
 		if (type == ShaderType::Pixel)
@@ -948,15 +948,8 @@ namespace sd
 		m_func.push_back(Function());
 		Function& func = m_func[m_func.size()-1];
 
-		func.ID = m_gen.Function.Create(function->name, function->parameters.size());
-		func.Name = m_currentFunction = function->name;
-		func.Arguments.clear();
-
-		if (function->returnType->builtin)
-			func.ReturnType = kTypes[((glsl::astBuiltin*)function->returnType)->type];
-		else
-			func.ReturnType = ((glsl::astStruct*)function->returnType)->name;
-
+		std::vector<ag::Type> argTypes;
+		std::vector<std::string> argNames;
 		for (size_t i = 0; i < function->parameters.size(); i++) {
 			glsl::astFunctionParameter* param = function->parameters[i];
 
@@ -967,14 +960,30 @@ namespace sd
 				pdata.Type = kTypes[((glsl::astBuiltin*)param->baseType)->type];
 			else
 				pdata.Type = ((glsl::astStruct*)param->baseType)->name;
-			// TODO: arrays
+
+			ag::Type btype = m_convertBaseType(pdata.Type);
+			if (btype == ag::Type::Void)
+				btype = ag::Type::Object;
+
+			argTypes.push_back(btype);
+			argNames.push_back(pdata.Name);
+
+			// TODO: arrays?
 			// param->isArray
-			
+
 			func.Arguments.push_back(pdata);
 		}
 
+		func.ID = m_gen.Function.Create(function->name, function->parameters.size(), argTypes, argNames);
+		func.Name = m_currentFunction = function->name;
+		func.Arguments.clear();
 
-		m_gen.Function.SetCurrent(func.Name);
+		if (function->returnType->builtin)
+			func.ReturnType = kTypes[((glsl::astBuiltin*)function->returnType)->type];
+		else
+			func.ReturnType = ((glsl::astStruct*)function->returnType)->name;
+
+		m_gen.Function.SetCurrent(func.ID);
 
 		// initialize global variables at the start of main()
 		if (func.Name == m_entryFunction) {

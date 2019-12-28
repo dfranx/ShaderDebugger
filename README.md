@@ -61,6 +61,3 @@ List of things that currently don't work but I plan to fix them:
 
 ### HLSL
 - not implemented yet
-
-### Both
-- function overloading (BlueVM)

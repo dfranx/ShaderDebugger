@@ -17,7 +17,7 @@ namespace sd
 		~ShaderDebugger();
 
 		template<typename CodeTranslator>
-		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_library* library)
+		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
 		{
 			if (m_transl != nullptr)
 				delete m_transl;
@@ -26,6 +26,7 @@ namespace sd
 
 			m_entry = entry;
 			m_library = library;
+			m_args = args;
 			m_prog = nullptr;
 			m_stepper = nullptr;
 
@@ -43,7 +44,7 @@ namespace sd
 				if (entryPtr == nullptr)
 					return false;
 
-				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, NULL);
+				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, m_args);
 				
 				if (m_library != nullptr)
 					bv_program_add_library(m_prog, library);
@@ -54,9 +55,10 @@ namespace sd
 
 		inline Translator* GetTranslator() { return m_transl; }
 
-		inline bv_variable Execute() { return Execute(m_entry); }
-		bv_variable Execute(const std::string& func); // TODO: arguments
+		inline bv_variable Execute() { return Execute(m_entry, m_args); }
+		bv_variable Execute(const std::string& func, bv_stack* args = NULL); // TODO: arguments
 
+		inline bv_variable GetReturnValue() { return bv_variable_copy(m_stepper->result); }
 
 		std::string GetCurrentFunction();
 		std::vector<std::string> GetFunctionStack();
@@ -81,6 +83,7 @@ namespace sd
 		std::string m_entry;
 		bv_library* m_library;
 		bv_program* m_prog;
+		bv_stack* m_args;
 		bv_function_stepper* m_stepper;
 		std::vector<uint8_t> m_bytecode;
 	};

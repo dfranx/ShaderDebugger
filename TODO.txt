@@ -1,8 +1,6 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- Execute() with arguments
-
 - samplers
 - test gl_FragCoord, etc... -> should generate get_global_by_name opcode
 - finish GLSL bv_library

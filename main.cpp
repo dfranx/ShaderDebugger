@@ -30,7 +30,7 @@ int main() {
 	t.close();
 
 	sd::ShaderDebugger dbg;
-	bool res = dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", sd::Library::GLSL());
+	bool res = dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
 	
 	if (!res) {
 		printf("[ERROR] Failed to compile the shader.\n");
@@ -130,7 +130,7 @@ int main() {
 					else if (val->type == bv_type_int)
 						printf("%d\n", sd::AsInteger(*val));
 					else if (val->type == bv_type_object) {
-						bv_object* obj = bv_variable_get_object(sd::Get(*val));
+						bv_object* obj = bv_variable_get_object(*val);
 						if (strcmp(obj->type->name, "vec3") == 0) {
 							glm::vec3 vecval = sd::AsVec3(*val);
 							printf("%.4f %.4f %.4f\n", vecval.x, vecval.y, vecval.z);

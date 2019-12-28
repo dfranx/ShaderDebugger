@@ -20,7 +20,7 @@ namespace sd
 		if (m_library != nullptr)
 			bv_library_delete(m_library);
 	}
-	bv_variable ShaderDebugger::Execute(const std::string& func)
+	bv_variable ShaderDebugger::Execute(const std::string& func, bv_stack* args)
 	{
 		bv_function* funcPtr = bv_program_get_function(m_prog, func.c_str());
 		if (funcPtr == nullptr)
@@ -28,7 +28,7 @@ namespace sd
 
 
 		// call function and store its return value
-		return bv_program_call(m_prog, funcPtr, NULL, NULL);
+		return bv_program_call(m_prog, funcPtr, args, NULL);
 	}
 	bv_variable* ShaderDebugger::GetValue(const std::string& gvarname)
 	{

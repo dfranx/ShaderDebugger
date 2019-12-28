@@ -26,10 +26,9 @@ Run the program:
 ## Example
 ```c++
 std::string src = ... your shader code ...;
-bv_library* libGLSL = sd::Library::GLSL();
 
 sd::ShaderDebugger dbg;
-dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", libGLSL);
+dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
 
 dbg.SetValue("iFactor", 0.7f);
 dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
@@ -40,7 +39,6 @@ glm::vec3 outColor = sd::AsVec3(*dbg.GetValue("outColor"));
 printf("outColor = vec3(%.2f, %.2f, %.2f);\n", outColor.x, outColor.y, outColor.z);
 
 bv_variable_deinitialize(&ret);
-bv_library_delete(libGLSL);
 
 return 0;
 ```
@@ -50,6 +48,10 @@ Or execute line by line:
 while (vs.Step()) {
     // get various info using these functions: GetCurrentFunction, GetFunctionStack, GetVariableValue, etc...
 }
+// if you want to get return value:
+//    bv_variable ret = vs.GetReturnValue();
+//    ...
+//    bv_variable_deinitialize(&ret);
 ```
 
 ## Limitations

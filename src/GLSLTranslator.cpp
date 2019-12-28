@@ -280,9 +280,20 @@ namespace sd
 
 	void GLSLTranslator::translateFunctionCall(glsl::astFunctionCall *expression) {
 		m_exportLine(expression);
-				
-		for (int i = expression->parameters.size()-1; i >= 0; i--)
+		
+		Function data = matchFunction(expression->name, expression->parameters);
+		std::vector<GLSLTranslator::ExpressionType> paramTypes(expression->parameters.size());
+		for (int i = 0; i < data.Arguments.size(); i++)
+			paramTypes[i] = m_convertExprType(data.Arguments[i].Type);
+
+		for (int i = expression->parameters.size() - 1; i >= 0; i--) {
 			translateExpression(expression->parameters[i]);
+
+			if (!data.Name.empty() && paramTypes[i] != evaluateExpressionType(expression->parameters[i]))
+				generateConvert(paramTypes[i]);
+		}
+
+
 		m_gen.Function.CallReturn(expression->name, expression->parameters.size());
 	}
 
@@ -302,7 +313,7 @@ namespace sd
 				if (btype != ag::Type::Void)
 					m_gen.Function.Convert(btype);
 				else
-					m_gen.Function.CallReturn(tName, expression->parameters.size()); // casting: int(3.2f)
+					m_gen.Function.CallReturn(tName, expression->parameters.size()); // cast: vec3(ivec3)
 			}
 		} else {
 			// TODO: push new object
@@ -321,9 +332,9 @@ namespace sd
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
 
-			ag::Type cType = m_convertBaseType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
-			if (cType != ag::Type::Void)
-				m_gen.Function.Convert(cType);
+			GLSLTranslator::ExpressionType cType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
+			if (cType != evaluateExpressionType(variable->initialValue))
+				generateConvert(cType);
 
 			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 		}
@@ -448,18 +459,154 @@ namespace sd
 		else if (expression->assignment == glsl::kOperator_bit_xor_assign)
 			m_gen.Function.BitOr();
 
-		ag::Type lhsType = evaluateBaseType(expression->operand1);
-		if (lhsType != ag::Type::Void) // TODO: only cast when typeof(lhs) != typeof(rhs)
-			m_gen.Function.Convert(lhsType);
+		GLSLTranslator::ExpressionType lhsType = evaluateExpressionType(expression->operand1);
+
+		if (lhsType != evaluateExpressionType(expression->operand2))
+			generateConvert(lhsType); // TODO: only cast when typeof(lhs) != typeof(rhs)
 			
 		m_isSet = true;
 		translateExpression(expression->operand1); // lhs
 		m_isSet = false;
 	}
 
-	ag::Type GLSLTranslator::evaluateType(glsl::astExpression* expr)
+	Function GLSLTranslator::matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params)
+	{
+		Function ret;
+
+		int match_args = -1;
+
+		std::vector<GLSLTranslator::ExpressionType> paramTypes(params.size());
+		for (int i = 0; i < paramTypes.size(); i++)
+			paramTypes[i] = evaluateExpressionType(params[i]);
+
+		printf("[DEBUG] Trying to find a match with: ");
+		for (int i = 0; i < paramTypes.size(); i++)
+			printf("%s, ", paramTypes[i].Name.c_str());
+		printf("\n");
+
+		for (int i = 0; i < m_func.size(); i++) {
+			if (m_func[i].Name == name) {
+				if (m_func[i].Arguments.size() != params.size())
+					continue;
+
+				int func_matches = 0;
+
+				for (int j = 0; j < m_func[i].Arguments.size(); j++) {
+					// user defined structures
+					if (m_convertExprType(m_func[i].Arguments[j].Type).Type == ag::Type::Object) {
+						// TODO: check if types match
+						if (m_func[i].Arguments[j].Type == paramTypes[j].Name)
+							func_matches++;
+					}
+					else {
+						if (paramTypes[j] == m_convertExprType(m_func[i].Arguments[j].Type))
+							func_matches++;
+					}
+				}
+
+				if (func_matches > match_args) {
+					if (func_matches == params.size())
+						return m_func[i];
+					ret = m_func[i];
+					match_args = func_matches;
+				}
+			}
+		}
+		printf("[DEBUG] Best match: %d\n",  match_args);
+		return ret;
+	}
+
+
+	void GLSLTranslator::generateConvert(GLSLTranslator::ExpressionType etype)
+	{
+		if (etype.Type == ag::Type::Object) {
+			// TODO: ?
+		}
+		else if (etype.Type == ag::Type::Void) { }
+		else {
+			if (etype.Columns * etype.Rows == 1)
+				m_gen.Function.Convert(etype.Type);
+			else {
+				// TODO: call vec3, etc...
+			}
+		}
+	}
+	GLSLTranslator::ExpressionType GLSLTranslator::evaluateExpressionType(glsl::astExpression* expr)
 	{
 		switch (expr->type) {
+		case glsl::astExpression::kIntConstant:
+			return GLSLTranslator::ExpressionType("int", ag::Type::Int, 1, 1);
+		case glsl::astExpression::kUIntConstant:
+			return GLSLTranslator::ExpressionType("uint", ag::Type::UInt, 1, 1);
+		case glsl::astExpression::kFloatConstant:
+			return GLSLTranslator::ExpressionType("float", ag::Type::Float, 1, 1);
+		case glsl::astExpression::kDoubleConstant:
+			return GLSLTranslator::ExpressionType("double", ag::Type::Float, 1, 1);
+		case glsl::astExpression::kBoolConstant:
+			return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+		case glsl::astExpression::kFunctionCall: {
+			glsl::astFunctionCall* func = (glsl::astFunctionCall*)expr;
+			Function data = matchFunction(func->name, func->parameters);
+			return m_convertExprType(data.ReturnType);
+		} break;
+		case glsl::astExpression::kConstructorCall: {
+			glsl::astConstructorCall* constr = (glsl::astConstructorCall*)expr;
+
+			std::string vartype = "";
+			if (constr->type->builtin)
+				vartype = kTypes[((glsl::astBuiltin*)constr->type)->type];
+			else
+				vartype = ((glsl::astStruct*)constr->type)->name;
+
+			return m_convertExprType(vartype);
+		} break;
+		case glsl::astExpression::kPostIncrement: {
+			glsl::astPostIncrementExpression* opdata = (glsl::astPostIncrementExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kPostDecrement: {
+			glsl::astPostDecrementExpression* opdata = (glsl::astPostDecrementExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kUnaryMinus: {
+			glsl::astUnaryMinusExpression* opdata = (glsl::astUnaryMinusExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kUnaryPlus: {
+			glsl::astUnaryPlusExpression* opdata = (glsl::astUnaryPlusExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kBitNot: {
+			glsl::astUnaryBitNotExpression* opdata = (glsl::astUnaryBitNotExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kLogicalNot: {
+			glsl::astUnaryLogicalNotExpression* opdata = (glsl::astUnaryLogicalNotExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kPrefixIncrement: {
+			glsl::astPrefixIncrementExpression* opdata = (glsl::astPrefixIncrementExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kPrefixDecrement: {
+			glsl::astPrefixDecrementExpression* opdata = (glsl::astPrefixDecrementExpression*)expr;
+			return evaluateExpressionType(opdata->operand);
+		} break;
+		case glsl::astExpression::kAssign: {
+			glsl::astAssignmentExpression* opdata = (glsl::astAssignmentExpression*)expr;
+			return evaluateExpressionType(opdata->operand1);
+		} break;
+		case glsl::astExpression::kOperation: {
+			glsl::astOperationExpression* opdata = (glsl::astOperationExpression*)expr;
+			GLSLTranslator::ExpressionType type1 = evaluateExpressionType(opdata->operand1);
+			GLSLTranslator::ExpressionType type2 = evaluateExpressionType(opdata->operand2);
+
+			return m_mergeExprType(opdata->operation, type1, type2);
+		} break;
+		case glsl::astExpression::kTernary: {
+			glsl::astTernaryExpression* opdata = (glsl::astTernaryExpression*)expr;
+			return evaluateExpressionType(opdata->onTrue);
+		} break;
 		case glsl::astExpression::kVariableIdentifier: {
 			glsl::astVariableIdentifier* varexpr = (glsl::astVariableIdentifier*)expr;
 			std::string vartype = "";
@@ -468,71 +615,34 @@ namespace sd
 			else
 				vartype = ((glsl::astStruct*)varexpr->variable->baseType)->name;
 
-			return m_convertType(vartype);
-		}
+			return m_convertExprType(vartype);
+		} break;
 		case glsl::astExpression::kFieldOrSwizzle:
 		{
 			glsl::astFieldOrSwizzle* field = (glsl::astFieldOrSwizzle*)expr;
-			ag::Type structBType = evaluateType(field->operand);
+			GLSLTranslator::ExpressionType structBType = evaluateExpressionType(field->operand);
 
-			if (structBType == ag::Type::Void) {
+			if (structBType.Type == ag::Type::Object) {
 				// user defined structure
 				printf("[DEBUG] evauluateType user defined structure.\n");
 				for (const auto& s : m_structures)
 					for (const auto& m : s.Members)
 						if (m.Name == field->name)
-							return m_convertType(m.Type);
+							return m_convertExprType(m.Type);
 			}
 			else return structBType;
-		}
+		} break;
 		case glsl::astExpression::kArraySubscript:
 		{
 			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
-			return evaluateType(arr->operand);
-		}
-		}
-
-		return ag::Type::Void;
-	}
-	ag::Type GLSLTranslator::evaluateBaseType(glsl::astExpression* expr)
-	{
-		switch (expr->type) {
-		case glsl::astExpression::kVariableIdentifier: {
-			glsl::astVariableIdentifier* varexpr = (glsl::astVariableIdentifier*)expr;
-			std::string vartype = "";
-			if (varexpr->variable->baseType->builtin)
-				vartype = kTypes[((glsl::astBuiltin*)varexpr->variable->baseType)->type];
-			else
-				vartype = "void";
-
-			return m_convertBaseType(vartype);
-		}
-		case glsl::astExpression::kFieldOrSwizzle:
-		{
-			glsl::astFieldOrSwizzle* field = (glsl::astFieldOrSwizzle*)expr;
-			ag::Type structBType = evaluateType(field->operand);
-
-			if (structBType == ag::Type::Void) {
-				// user defined structure
-				printf("[DEBUG] evauluateType user defined structure.\n");
-				for (const auto& s : m_structures)
-					for (const auto& m : s.Members)
-						if (m.Name == field->name)
-							return m_convertBaseType(m.Type);
-			}
-			else if (strlen(field->name) == 1) return structBType;
-		}
-		case glsl::astExpression::kArraySubscript:
-		{
-			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
-			return evaluateBaseType(arr->operand);
-		}
+			return evaluateExpressionType(arr->operand); // TODO: matrices
+		} break;
 		}
 
-		return ag::Type::Void;
+		return GLSLTranslator::ExpressionType();
 	}
 
-	ag::Type GLSLTranslator::m_convertType(const std::string& str)
+	GLSLTranslator::ExpressionType GLSLTranslator::m_convertExprType(const std::string& str)
 	{
 		static const std::vector<std::string> floatStructs = {
 			KEYWORD(mat2)
@@ -584,16 +694,318 @@ namespace sd
 			KEYWORD(uvec4)
 		};
 
-		if (str == "float" || std::count(floatStructs.begin(), floatStructs.end(), str) > 0) return ag::Type::Float;
-		if (str == "int" || std::count(intStructs.begin(), intStructs.end(), str) > 0) return ag::Type::Int;
-		if (str == "bool" || std::count(boolStructs.begin(), boolStructs.end(), str) > 0) return ag::Type::UChar;
-		if (str == "uint" || std::count(uintStructs.begin(), uintStructs.end(), str) > 0) return ag::Type::UInt;
+		static const std::vector<std::pair<int, int>> floatStructSize = {
+			std::make_pair(2,2),
+			std::make_pair(3,3),
+			std::make_pair(4,4),
+			std::make_pair(2,2),
+			std::make_pair(2,3),
+			std::make_pair(2,4),
+			std::make_pair(3,2),
+			std::make_pair(3,3),
+			std::make_pair(3,4),
+			std::make_pair(4,2),
+			std::make_pair(4,3),
+			std::make_pair(4,4),
+			std::make_pair(2,1),
+			std::make_pair(3,1),
+			std::make_pair(4,1)
+		};
+		static const std::vector<std::pair<int, int>> doubleStructSize = {
+			std::make_pair(2,2),
+			std::make_pair(3,3),
+			std::make_pair(4,4),
+			std::make_pair(2,2),
+			std::make_pair(2,3),
+			std::make_pair(2,4),
+			std::make_pair(3,2),
+			std::make_pair(3,3),
+			std::make_pair(3,4),
+			std::make_pair(4,2),
+			std::make_pair(4,3),
+			std::make_pair(4,4),
+			std::make_pair(2,1),
+			std::make_pair(3,1),
+			std::make_pair(4,1)
+		};
+		static const std::vector<std::pair<int, int>> intStructSize = {
+			std::make_pair(2,1),
+			std::make_pair(3,1),
+			std::make_pair(4,1)
+		};
+		static const std::vector<std::pair<int, int>> boolStructSize = {
+			std::make_pair(2,1),
+			std::make_pair(3,1),
+			std::make_pair(4,1)
+		};
+		static const std::vector<std::pair<int, int>> uintStructSize = {
+			std::make_pair(2,1),
+			std::make_pair(3,1),
+			std::make_pair(4,1)
+		};
+
+		// float
+		if (str == "float") return ExpressionType(str, ag::Type::Float, 1, 1);
+		if (std::count(floatStructs.begin(), floatStructs.end(), str) > 0) {
+			for (int i = 0; i < floatStructs.size(); i++)
+				if (floatStructs[i] == str)
+					return ExpressionType(str, ag::Type::Float, floatStructSize[i].first, floatStructSize[i].second);
+		}
+
+		// int
+		if (str == "int") return ExpressionType(str, ag::Type::Int, 1, 1);
+		if (std::count(intStructs.begin(), intStructs.end(), str) > 0) {
+			for (int i = 0; i < intStructs.size(); i++)
+				if (intStructs[i] == str)
+					return ExpressionType(str, ag::Type::Float, intStructSize[i].first, intStructSize[i].second);
+		}
+
+		// bool
+		if (str == "bool") return ExpressionType(str, ag::Type::UChar, 1, 1);
+		if (std::count(boolStructs.begin(), boolStructs.end(), str) > 0) {
+			for (int i = 0; i < boolStructs.size(); i++)
+				if (boolStructs[i] == str)
+					return ExpressionType(str, ag::Type::UChar, boolStructSize[i].first, boolStructSize[i].second);
+		}
+
+		// uint
+		if (str == "uint") return ExpressionType(str, ag::Type::UInt, 1, 1);
+		if (std::count(uintStructs.begin(), uintStructs.end(), str) > 0) {
+			for (int i = 0; i < uintStructs.size(); i++)
+				if (uintStructs[i] == str)
+					return ExpressionType(str, ag::Type::UInt, uintStructSize[i].first, uintStructSize[i].second);
+		}
 
 		// TODO: oops, BlueVM doesn't support doubles (?)
-		if (str == "double" || std::count(doubleStructs.begin(), doubleStructs.end(), str) > 0) return ag::Type::Float;
+		if (str == "double") return ExpressionType(str, ag::Type::Float, 1, 1);
+		if (std::count(doubleStructs.begin(), doubleStructs.end(), str) > 0) {
+			for (int i = 0; i < doubleStructs.size(); i++)
+				if (doubleStructs[i] == str)
+					return ExpressionType(str, ag::Type::Float, doubleStructSize[i].first, doubleStructSize[i].second);
+		}
 
-		return ag::Type::Void;
+		if (str == "void") return ExpressionType(str, ag::Type::Void, 1, 1);
+
+		return ExpressionType(str, ag::Type::Object, 1, 1);
 	}
+	GLSLTranslator::ExpressionType GLSLTranslator::m_mergeExprType(int op, const GLSLTranslator::ExpressionType& left, const GLSLTranslator::ExpressionType& right)
+	{
+		if (left.Type == ag::Type::Object)
+			return left;
+		else if (right.Type == ag::Type::Object)
+			return right;
+		else if (right.Type == ag::Type::Void || left.Type == ag::Type::Void)
+			return GLSLTranslator::ExpressionType("void", ag::Type::Void, 1, 1);
+		else {
+			int compLeft = left.Columns * left.Rows;
+			int compRight = right.Columns * right.Rows;
+
+			switch (op)
+			{
+			case glsl::kOperator_multiply: {
+				if (compLeft > 1 || compRight > 1) {
+					// matrix * ...
+					if (left.Rows != 1) {
+						// matrix * matrix
+						if (right.Rows != 1) {
+							ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+							int rows = left.Rows;
+							int cols = right.Columns;
+
+							std::string newName = "mat";
+							if (rows == cols)
+								newName += std::to_string(cols);
+							else
+								newName += std::to_string(cols) + "x" + std::to_string(rows);
+
+							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						}
+						// matrix * vector
+						else if (right.Columns != 1) {
+							ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+							int rows = 1;
+							int cols = right.Columns;
+
+							std::string newName = "vec" + std::to_string(cols);
+
+							if (newType == ag::Type::Int)
+								newName = "i" + newName;
+							else if (newType == ag::Type::UInt)
+								newName = "u" + newName;
+							else if (newType == ag::Type::UChar)
+								newName = "b" + newName;
+
+							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						}
+						// matrix * scalar
+						else {
+							ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+							int rows = left.Rows;
+							int cols = left.Columns;
+
+							std::string newName = "mat";
+							if (rows == cols)
+								newName += std::to_string(cols);
+							else
+								newName += std::to_string(cols) + "x" + std::to_string(rows);
+
+							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						}
+					}
+					// scalar * matrix
+					else if (right.Rows != 1) {
+						ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+						int rows = left.Rows;
+						int cols = left.Columns;
+
+						std::string newName = "mat";
+						if (rows == cols)
+							newName += std::to_string(cols);
+						else
+							newName += std::to_string(cols) + "x" + std::to_string(rows);
+
+						return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+					}
+					// vector * ...
+					else if (left.Columns != 1) {
+						// vector * vector
+						if (right.Columns != 1) {
+							ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+							int rows = 1;
+							int cols = left.Columns;
+
+							std::string newName = "vec" + std::to_string(cols);
+
+							if (newType == ag::Type::Int)
+								newName = "i" + newName;
+							else if (newType == ag::Type::UInt)
+								newName = "u" + newName;
+							else if (newType == ag::Type::UChar)
+								newName = "b" + newName;
+
+							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						}
+						// vector * scalar
+						else {
+							ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+							int rows = 1;
+							int cols = left.Columns;
+
+							std::string newName = "vec" + std::to_string(cols);
+
+							if (newType == ag::Type::Int)
+								newName = "i" + newName;
+							else if (newType == ag::Type::UInt)
+								newName = "u" + newName;
+							else if (newType == ag::Type::UChar)
+								newName = "b" + newName;
+
+							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						}
+					}
+					// scalar * vector
+					else if (right.Columns != 1) {
+						ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+
+						int rows = 1;
+						int cols = right.Columns;
+
+						std::string newName = "vec" + std::to_string(cols);
+
+						if (newType == ag::Type::Int)
+							newName = "i" + newName;
+						else if (newType == ag::Type::UInt)
+							newName = "u" + newName;
+						else if (newType == ag::Type::UChar)
+							newName = "b" + newName;
+
+						return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+					}
+				}
+
+			} break;
+			case glsl::kOperator_less: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_greater: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_less_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_greater_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_not_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			default: {
+				GLSLTranslator::ExpressionType big = left;
+				GLSLTranslator::ExpressionType small = right;
+
+				if (compRight > compLeft) {
+					big = right;
+					small = left;
+				}
+
+				ag::Type newType = m_mergeBaseType(big.Type, small.Type);
+				std::string newName = big.Name;
+
+				size_t matPos = newName.find("mat");
+				size_t vecPos = newName.find("vec");
+
+				if (matPos != std::string::npos) {
+					if (matPos == 0) {}
+					else if (newType == ag::Type::Float)
+						newName = newName.substr(1);
+				}
+				else if (vecPos != std::string::npos) {
+					if (vecPos == 0) {}
+					else if (newType == ag::Type::Float)
+						newName = newName.substr(1);
+					else if (newType == ag::Type::Int)
+						newName[0] = 'i';
+					else if (newType == ag::Type::UInt)
+						newName[0] = 'u';
+					else if (newType == ag::Type::UChar)
+						newName[0] = 'b';
+				}
+				else if (compLeft == 1 && compRight == 1) {
+					// scalar
+					if (newType == ag::Type::Float)
+						newName = "float";
+					else if (newType == ag::Type::Int)
+						newName = "int";
+					else if (newType == ag::Type::UInt)
+						newName = "uint";
+					else if (newType == ag::Type::UChar)
+						newName = "bool";
+				}
+
+				return GLSLTranslator::ExpressionType(newName, newType, big.Columns, big.Rows);
+			} break;
+			}
+		}
+
+		return GLSLTranslator::ExpressionType("void", ag::Type::Void, 1, 1);
+	}
+	ag::Type GLSLTranslator::m_mergeBaseType(ag::Type type1, ag::Type type2)
+	{
+		if (type1 == ag::Type::Float || type2 == ag::Type::Float)
+			return ag::Type::Float;
+		else if (type1 == ag::Type::UInt || type2 == ag::Type::UInt)
+			return ag::Type::UInt;
+		else if (type1 == ag::Type::Int || type2 == ag::Type::Int)
+			return ag::Type::Int;
+		else if (type1 == ag::Type::UShort || type2 == ag::Type::UShort)
+			return ag::Type::UShort;
+		else if (type1 == ag::Type::Short || type2 == ag::Type::Short)
+			return ag::Type::Short;
+		else if (type1 == ag::Type::UChar || type2 == ag::Type::UChar)
+			return ag::Type::UChar;
+		else if (type1 == ag::Type::Char || type2 == ag::Type::Char)
+			return ag::Type::Char;
+
+		return type1;
+	}
+
 	ag::Type GLSLTranslator::m_convertBaseType(const std::string& str)
 	{
 		if (str == "float") return ag::Type::Float;
@@ -885,18 +1297,12 @@ namespace sd
 	void GLSLTranslator::translateReturnStatement(glsl::astReturnStatement *statement) {
 		m_exportLine(statement);
 		
-		if (statement->expression)
+		if (statement->expression) {
 			translateExpression(statement->expression);
 
-		if (statement->expression)
-			for (const auto& f : m_func) {
-				if (f.Name == m_currentFunction) {
-					ag::Type rType = m_convertBaseType(f.ReturnType);
-					if (rType != ag::Type::Void) // TODO: check if typeof(expr) != typeof(funcRet)
-						m_gen.Function.Convert(rType);
-					break;
-				}
-			}
+			GLSLTranslator::ExpressionType rType = m_convertExprType(m_curFuncData->ReturnType);
+			generateConvert(rType);
+		}
 
 		m_gen.Function.Return();
 	}
@@ -947,6 +1353,8 @@ namespace sd
 		
 		m_func.push_back(Function());
 		Function& func = m_func[m_func.size()-1];
+		
+		func.Arguments.clear();
 
 		std::vector<ag::Type> argTypes;
 		std::vector<std::string> argNames;
@@ -966,7 +1374,7 @@ namespace sd
 				btype = ag::Type::Object;
 
 			argTypes.push_back(btype);
-			argNames.push_back(pdata.Name);
+			argNames.push_back(pdata.Type);
 
 			// TODO: arrays?
 			// param->isArray
@@ -976,12 +1384,13 @@ namespace sd
 
 		func.ID = m_gen.Function.Create(function->name, function->parameters.size(), argTypes, argNames);
 		func.Name = m_currentFunction = function->name;
-		func.Arguments.clear();
-
+		
 		if (function->returnType->builtin)
 			func.ReturnType = kTypes[((glsl::astBuiltin*)function->returnType)->type];
 		else
 			func.ReturnType = ((glsl::astStruct*)function->returnType)->name;
+
+		m_curFuncData = &func;
 
 		m_gen.Function.SetCurrent(func.ID);
 

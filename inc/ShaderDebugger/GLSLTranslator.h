@@ -72,8 +72,32 @@ namespace sd
 			return !(t == "void" || t == "bool" || t == "int" || t == "uint" || t == "float" || t == "double");
 		}
 
-		ag::Type evaluateType(glsl::astExpression* expr);
-		ag::Type evaluateBaseType(glsl::astExpression* expr);
+
+		class ExpressionType
+		{
+		public:
+			ExpressionType() { Name = "float"; Type = ag::Type::Float; Columns = Rows = 1; }
+			ExpressionType(const std::string& name, ag::Type type, int cols, int rows)
+			{
+				Name = name; Type = type; Columns = cols; Rows = rows;
+			}
+
+			bool operator==(const ExpressionType& obj) {
+				return Name == obj.Name && Type == obj.Type && Columns == obj.Columns && Rows == obj.Rows;
+			}
+			bool operator!=(const ExpressionType& obj) {
+				return !(*this == obj);
+			}
+
+			std::string Name;
+			ag::Type Type;
+			int Columns, Rows;
+		}; // example: "vec4", ag::Type::Float, 4, 1
+
+		ExpressionType evaluateExpressionType(glsl::astExpression* expr);
+
+		Function matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params);
+		void generateConvert(ExpressionType etype);
 
 	private:
 		int m_lastLineSaved; // dont add OpCode::DebugLine for every expression, but rather only when astNode->line != m_lastLineSaved
@@ -86,13 +110,18 @@ namespace sd
 			}
 		}
 
+		ExpressionType m_convertExprType(const std::string& str);
+		ExpressionType m_mergeExprType(int op, const ExpressionType& left, const ExpressionType& right);
+		ag::Type m_mergeBaseType(ag::Type left, ag::Type right);
+
 		ag::Type m_convertBaseType(const std::string& str);
-		ag::Type m_convertType(const std::string& str);
 
 		std::unordered_map<std::string, std::string> m_initObjsInMain;
 		std::unordered_map<std::string, glsl::astConstantExpression*> m_initInMain;
 		std::unordered_map<std::string, glsl::vector<glsl::astConstantExpression*>> m_initArraysInMain; // global arrays
 		std::string m_currentFunction, m_entryFunction;
+
+		Function* m_curFuncData;
 
 		std::stack<std::vector<size_t>> m_breaks;	// contains all break; IDs gathered from m_gen.Function.Goto()
 		std::stack<int> m_continueAddr;				// m_continueAddr.size() != 0 when 'continue' can be called, points to address to go to when continue is called

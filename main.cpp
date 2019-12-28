@@ -74,9 +74,9 @@ int main() {
 			system("clear"); // I know...
 			#endif
 
-			int lnBegin = std::max(0, curLine-3);
-			int lnEnd = std::min((int)srcLines.size(), curLine+3);
-			for (int i = lnBegin; i < lnEnd; i++) {
+			int lnBegin = std::max(0, curLine-5);
+			int lnEnd = std::min((int)srcLines.size()-1, curLine+5);
+			for (int i = lnBegin; i <= lnEnd; i++) {
 				if (i == curLine)
 					printf(">>>> | %s\n", srcLines[i].c_str());
 				else

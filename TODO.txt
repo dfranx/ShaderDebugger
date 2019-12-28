@@ -1,12 +1,13 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- field swizzling
 - Execute() with arguments
+
 - samplers
 - test gl_FragCoord, etc... -> should generate get_global_by_name opcode
 - finish GLSL bv_library
-- implement $$discard function, converting i/u/b/dvecX to vecX in op_assign, function calls, etc...
+- implement $$discard function, converting i/u/b/dvecX to vecX in op_assign, in function calls, etc..., test: vec3.xz = 1.0f;
+
 - breakpoints (& conditional breakpoints -> dbg.AddBreakpoint(line, "a == 2.1f") -> compile as bool bkpt() { return condition; } -> all variables global -> copy values from the main shader )
 - StepOut() & Continue()
 - #define & #version

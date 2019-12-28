@@ -36,6 +36,8 @@ namespace sd
 				m_prog = bv_program_create(m_bytecode.data());
 				if (m_prog == nullptr)
 					return false; // invalid bytecode
+
+				m_prog->property_getter = m_transl->PropertyGetter;
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
 				if (entryPtr == nullptr)

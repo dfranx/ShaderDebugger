@@ -10,6 +10,10 @@
 #include <ShaderDebugger/Structure.h>
 #include <ShaderDebugger/Variable.h>
 
+extern "C" {
+	#include <BlueVM/bv_object.h>
+}
+
 namespace sd
 {
 	class Translator
@@ -23,6 +27,8 @@ namespace sd
 		inline const std::vector<std::string>& GetLocals(const std::string& func) { return m_locals[func]; }
 
 		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main") = 0;
+
+		bv_object_get_property_ext PropertyGetter;
 
 	protected:
 		ag::Generator m_gen;

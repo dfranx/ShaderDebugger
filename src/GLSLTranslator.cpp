@@ -1,4 +1,5 @@
 #include <ShaderDebugger/GLSLTranslator.h>
+#include <ShaderDebugger/GLSLLibrary.h>
 #include <string.h>
 
 #undef KEYWORD
@@ -11,6 +12,7 @@ namespace sd
 {
 	bool GLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
+		PropertyGetter = Library::GLSLswizzle;
 		m_lastLineSaved = -1;
 		m_isSet = false;
 		m_usePointer = false;
@@ -624,13 +626,15 @@ namespace sd
 
 			if (structBType.Type == ag::Type::Object) {
 				// user defined structure
-				printf("[DEBUG] evauluateType user defined structure.\n");
 				for (const auto& s : m_structures)
 					for (const auto& m : s.Members)
 						if (m.Name == field->name)
 							return m_convertExprType(m.Type);
 			}
-			else return structBType;
+			else {
+				structBType.Columns = strlen(field->name); // vec3.x -> columns == 1, vec3.xy -> columns == 2, etc...
+				return structBType;
+			}
 		} break;
 		case glsl::astExpression::kArraySubscript:
 		{

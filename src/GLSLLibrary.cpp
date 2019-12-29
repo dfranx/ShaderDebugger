@@ -277,7 +277,7 @@ namespace sd
 		}
 		bv_variable lib_glsl_vec_operator_add(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			bv_variable ret;
+			bv_variable ret = bv_variable_create_void();
 
 			if (count == 1) {
 				// vec + vec
@@ -300,7 +300,7 @@ namespace sd
 		}
 		bv_variable lib_glsl_vec_operator_minus(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			bv_variable ret;
+			bv_variable ret = bv_variable_create_void();
 
 			if (count == 1) {
 				// vec - vec
@@ -353,7 +353,7 @@ namespace sd
 		}
 		bv_variable lib_glsl_vec_operator_divide(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			bv_variable ret;
+			bv_variable ret = bv_variable_create_void();
 
 			if (count == 1) {
 				// vec / vec
@@ -376,7 +376,7 @@ namespace sd
 		}
 		bv_variable lib_glsl_vec_operator_multiply(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			bv_variable ret;
+			bv_variable ret = bv_variable_create_void();
 
 			if (count == 1) {
 				// vec / vec
@@ -428,6 +428,50 @@ namespace sd
 					bv_variable_deinitialize(&retObj->prop[i]);
 					retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_not(prog, me->prop[i]));
 				}
+			}
+
+			return bv_variable_create_void();
+		}
+		bv_variable lib_glsl_vec_operator_array_get(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+
+			if (count == 1) {
+				int index = 0;
+
+				if (bv_type_is_integer(args[0].type))
+					index = bv_variable_get_int(args[0]);
+				else if (args[0].type == bv_type_float)
+					index = bv_variable_get_float(args[0]);
+
+				// TODO: how should we handle array index out of bounds?
+				if (index >= me->type->props.name_count)
+					index = me->type->props.name_count - 1;
+				if (index < 0)
+					index = 0;
+
+				ret = bv_variable_copy(me->prop[index]);
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_vec_operator_array_set(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			if (count == 2) {
+				int index = 0;
+
+				if (bv_type_is_integer(args[0].type))
+					index = bv_variable_get_int(args[0]);
+				else if (args[0].type == bv_type_float)
+					index = bv_variable_get_float(args[0]);
+
+				// TODO: how should we handle array index out of bounds?
+				if (index >= me->type->props.name_count)
+					index = me->type->props.name_count - 1;
+				if (index < 0)
+					index = 0;
+
+				me->prop[index] = bv_variable_cast(me->prop[index].type, args[1]);
 			}
 
 			return bv_variable_create_void();
@@ -543,6 +587,8 @@ namespace sd
 			bv_object_info_add_ext_method(vec, "*", lib_glsl_vec_operator_multiply);
 			bv_object_info_add_ext_method(vec, "++", lib_glsl_vec_operator_increment);
 			bv_object_info_add_ext_method(vec, "--", lib_glsl_vec_operator_decrement);
+			bv_object_info_add_ext_method(vec, "[]", lib_glsl_vec_operator_array_get);
+			bv_object_info_add_ext_method(vec, "[]=", lib_glsl_vec_operator_array_set);
 			if (logNot) bv_object_info_add_ext_method(vec, "!", lib_glsl_vec_operator_logical_not);
 
 			bv_library_add_object_info(lib, vec);

@@ -665,7 +665,15 @@ namespace sd
 		case glsl::astExpression::kArraySubscript:
 		{
 			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
-			return evaluateExpressionType(arr->operand); // TODO: matrices
+			GLSLTranslator::ExpressionType operandType = evaluateExpressionType(arr->operand);
+
+			// TODO: matrices & arrays (?)
+
+			// vector[index]
+			if (operandType.Columns * operandType.Rows > 1 && operandType.Name.find("vec") != std::string::npos)
+				operandType.Columns = operandType.Rows = 1;
+
+			return operandType;
 		} break;
 		}
 

@@ -1,4 +1,5 @@
 #include <ShaderDebugger/GLSLLibrary.h>
+#include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Utils.h>
 #include <string.h>
 #include <stdio.h>
@@ -8,6 +9,20 @@ namespace sd
 {
 	namespace Library
 	{
+		// helper functions:
+		bv_variable CreateVec3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f))
+		{
+			bv_variable ret = bv_variable_create_object(bv_program_get_object_info(prog, "vec3"));
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			bv_object_set_property(retObj, "x", bv_variable_create_float(val.x));
+			bv_object_set_property(retObj, "y", bv_variable_create_float(val.y));
+			bv_object_set_property(retObj, "z", bv_variable_create_float(val.z));
+
+			return ret;
+		}
+
+
 		/* swizzle */
 		bv_variable GLSLswizzle(bv_program* prog, bv_object* obj, const bv_string field)
 		{
@@ -43,13 +58,13 @@ namespace sd
 		}
 
 		/* vec3() */
-		bv_variable lib_vec3_constructor(bv_object* obj, u8 count, bv_variable* args)
+		bv_variable lib_vec3_constructor(bv_program* prog, bv_object* obj, u8 count, bv_variable* args)
 		{
 			if (count == 0) { // vec3()
 				bv_object_set_property(obj, "x", bv_variable_create_float(0.0f));
 				bv_object_set_property(obj, "y", bv_variable_create_float(0.0f));
 				bv_object_set_property(obj, "z", bv_variable_create_float(0.0f));
-			} else if (count == 1) { // vec3(0.5f)
+			} else if (count == 1) { // vec3(0.5f), TODO: ivec, bvec, ...
 				bv_object_set_property(obj, "x", bv_variable_cast(bv_type_float, args[0]));
 				bv_object_set_property(obj, "y", bv_variable_cast(bv_type_float, args[0])); // TODO: do just one cast
 				bv_object_set_property(obj, "z", bv_variable_cast(bv_type_float, args[0]));
@@ -63,7 +78,7 @@ namespace sd
 		}
 
 		/* vec3() + ... */
-		bv_variable lib_vec3_operator_add(bv_object* obj, u8 count, bv_variable* args)
+		bv_variable lib_vec3_operator_add(bv_program* prog, bv_object* obj, u8 count, bv_variable* args)
 		{
 			float myX = bv_variable_get_float(*bv_object_get_property(obj, "x"));
 			float myY = bv_variable_get_float(*bv_object_get_property(obj, "y"));
@@ -77,6 +92,7 @@ namespace sd
 				if (args[0].type == bv_type_object) {
 					bv_object* vec = bv_variable_get_object(args[0]);
 
+					// TODO: just for loop
 					if (strcmp(vec->type->name, "vec3") == 0) {
 						float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
 						float vecY = bv_variable_get_float(*bv_object_get_property(vec, "y"));
@@ -103,7 +119,7 @@ namespace sd
 
 			return ret;
 		}
-		bv_variable lib_vec3_operator_equal(bv_object* obj, u8 count, bv_variable* args)
+		bv_variable lib_vec3_operator_equal(bv_program* prog, bv_object* obj, u8 count, bv_variable* args)
 		{
 			float myX = bv_variable_get_float(*bv_object_get_property(obj, "x"));
 			float myY = bv_variable_get_float(*bv_object_get_property(obj, "y"));
@@ -115,7 +131,7 @@ namespace sd
 				// vec3 == vec3
 				if (args[0].type == bv_type_object) {
 					bv_object* vec = bv_variable_get_object(args[0]);
-
+					// TODO: for loop through properties
 					if (vec != nullptr) {
 						if (strcmp(vec->type->name, "vec3") == 0) {
 							float vecX = bv_variable_get_float(*bv_object_get_property(vec, "x"));
@@ -127,7 +143,7 @@ namespace sd
 					}
 				}
 
-				// vec3 + scalar
+				// vec3 == scalar
 				else {
 					bv_variable temp = bv_variable_cast(bv_type_float, args[0]);
 					float sVal = bv_variable_get_float(temp);
@@ -142,7 +158,7 @@ namespace sd
 		}
 
 		/* floor() */
-		bv_variable lib_floor(u8 count, bv_variable* args)
+		bv_variable lib_floor(bv_program* prog, u8 count, bv_variable* args)
 		{
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // floor(vec3), ...
@@ -169,6 +185,27 @@ namespace sd
 			
 			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
 		}
+		bv_variable lib_texture(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 2) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* smp2D = bv_variable_get_object(args[0]);
+
+					// sampler2D
+					if (strcmp(smp2D->type->name, "sampler2D") == 0) {
+						Texture* tex = (Texture*)smp2D->user_data;
+						glm::vec3 uvw = sd::AsVec3(args[1]); // TODO: vec2
+
+						glm::vec4 sample = tex->Sample(uvw.x, uvw.y, 0.0f, 0.0f + bias);
+						return CreateVec3(prog, glm::vec3(sample)); // TODO: CreateVec4
+					}
+					/* else if samplerCube, isampler2D ... */
+				}
+			}
+
+			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+		}
 
 		bv_library* GLSL()
 		{
@@ -183,9 +220,16 @@ namespace sd
 			bv_object_info_add_ext_method(vec3, "==", lib_vec3_operator_equal);
 			bv_object_info_add_ext_method(vec3, "+", lib_vec3_operator_add);
 			bv_library_add_object_info(lib, vec3);
+			
+			// sampler2D
+			bv_object_info* sampler2D = bv_object_info_create("sampler2D");
+			bv_library_add_object_info(lib, sampler2D);
 
 			// floor()
 			bv_library_add_function(lib, "floor", lib_floor);
+
+			// texture()
+			bv_library_add_function(lib, "texture", lib_texture);
 
 			return lib;
 		}

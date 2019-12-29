@@ -1,7 +1,6 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- samplers
 - finish GLSL bv_library
 - implement $$discard function
 - convert (when necessary) i/u/b/dvecX to vecX in op_assign, in function calls, etc...

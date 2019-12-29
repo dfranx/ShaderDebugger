@@ -11,6 +11,7 @@ set(SOURCES
 	src/GLSLLibrary.cpp
 	src/GLSLTranslator.cpp
 	src/ShaderDebugger.cpp
+	src/Texture.cpp
 	
 # glsl-parser
 	libs/glsl-parser/ast.cpp

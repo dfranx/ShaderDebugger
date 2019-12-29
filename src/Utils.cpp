@@ -31,4 +31,6 @@ namespace sd
 			return bv_variable_get_int(var);
 		return 0;
 	}
+
+	bv_variable CreateVec3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f));
 }

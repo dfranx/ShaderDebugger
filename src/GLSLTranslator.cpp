@@ -649,6 +649,11 @@ namespace sd
 			}
 			else {
 				structBType.Columns = strlen(field->name); // vec3.x -> columns == 1, vec3.xy -> columns == 2, etc...
+				for (int i = 0; i < structBType.Name.size(); i++)
+					if (isdigit(structBType.Name[i])) {
+						structBType.Name[i] = structBType.Columns + '0';
+						break;
+					}
 				return structBType;
 			}
 		} break;

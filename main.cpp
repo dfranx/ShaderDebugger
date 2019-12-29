@@ -5,6 +5,7 @@
 #include <string>
 
 #include <ShaderDebugger/Utils.h>
+#include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <ShaderDebugger/GLSLTranslator.h>
 #include <ShaderDebugger/ShaderDebugger.h>
@@ -54,6 +55,10 @@ int main() {
 		printf("[ERROR] Failed to compile the shader.\n");
 		return 1;
 	}
+
+	sd::Texture white;
+	white.Allocate(1, 1);
+	white.Fill(glm::vec4(0.5f, 0.1f, 0.6f, 0.2f));
 	
 	// initialize globals
 	const auto& globals = dbg.GetTranslator()->GetGlobals();
@@ -62,16 +67,22 @@ int main() {
 		if (global.Storage == sd::Variable::StorageType::Uniform ||
 			global.Storage == sd::Variable::StorageType::In)
 		{
-			printf("Please enter value for %s %s: ", global.Type.c_str(), global.Name.c_str());
+			if (global.Type == "sampler2D") {
+				// TODO: texture loading
+				dbg.SetValue(global.Name, "sampler2D", &white);
+			} else {
+				printf("Please enter value for %s %s: ", global.Type.c_str(), global.Name.c_str());
 
-			if (global.Type == "float") {
-				float val;
-				scanf("%f", &val);
-				dbg.SetValue(global.Name, val);
-			} else if (global.Type == "vec3") {
-				float x,y,z;
-				scanf("%f %f %f", &x,&y,&z);
-				dbg.SetValue(global.Name, "vec3", glm::vec3(x,y,z));
+				if (global.Type == "float") {
+					float val;
+					scanf("%f", &val);
+					dbg.SetValue(global.Name, val);
+				}
+				else if (global.Type == "vec3") {
+					float x, y, z;
+					scanf("%f %f %f", &x, &y, &z);
+					dbg.SetValue(global.Name, "vec3", glm::vec3(x, y, z));
+				}
 			}
 		}
 	}

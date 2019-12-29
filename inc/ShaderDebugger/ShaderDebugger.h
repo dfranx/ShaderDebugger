@@ -1,5 +1,6 @@
 #pragma once
 #include <ShaderDebugger/Translator.h>
+#include <ShaderDebugger/Texture.h>
 #include <glm/glm.hpp>
 
 #include <fstream>
@@ -73,6 +74,7 @@ namespace sd
 		// this makes ShaderDebugger work without needing to know which shader language it uses
 		void SetValue(const std::string& varName, float value);
 		void SetValue(const std::string& varName, const std::string& classType, glm::vec3 val);
+		void SetValue(const std::string& varName, const std::string& classType, sd::Texture* val);
 
 		bv_variable* GetValue(const std::string& gvarname);
 

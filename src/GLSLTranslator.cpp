@@ -330,8 +330,6 @@ namespace sd
 
 				if (btype != ag::Type::Void)
 					m_gen.Function.Convert(btype);
-				else
-					m_gen.Function.CallReturn(tName, expression->parameters.size()); // cast: vec3(ivec3)
 			}
 		} else {
 			// TODO: push new object
@@ -350,9 +348,10 @@ namespace sd
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
 
-			GLSLTranslator::ExpressionType cType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
-			if (cType != evaluateExpressionType(variable->initialValue))
-				generateConvert(cType);
+			GLSLTranslator::ExpressionType lType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
+			GLSLTranslator::ExpressionType rType = evaluateExpressionType(variable->initialValue);
+			if (lType != rType)
+				generateConvert(lType);
 
 			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 		}
@@ -450,11 +449,18 @@ namespace sd
 
 	void GLSLTranslator::translateAssign(glsl::astAssignmentExpression *expression) {
 		m_exportLine(expression);
-		
-		if (expression->assignment != glsl::kOperator_assign) // push the lhs to the stack too
+
+		GLSLTranslator::ExpressionType lType = evaluateExpressionType(expression->operand1);
+		GLSLTranslator::ExpressionType rType = evaluateExpressionType(expression->operand2);
+
+		if (expression->assignment != glsl::kOperator_assign) // push the lhs to the stack too if we are using some +=, -=, etc... operator
 			translateExpression(expression->operand1);
+		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+			generateConvert(rType);
 
 		translateExpression(expression->operand2); // rhs
+		if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+			generateConvert(lType);
 
 		if (expression->assignment == glsl::kOperator_add_assign)
 			m_gen.Function.Add();
@@ -544,9 +550,8 @@ namespace sd
 		else {
 			if (etype.Columns * etype.Rows == 1)
 				m_gen.Function.Convert(etype.Type);
-			else {
-				// TODO: call vec3, etc...
-			}
+			else
+				m_gen.Function.NewObjectByName(etype.Name, 1); // example: ivec3(vec3())
 		}
 	}
 	GLSLTranslator::ExpressionType GLSLTranslator::evaluateExpressionType(glsl::astExpression* expr)
@@ -782,7 +787,7 @@ namespace sd
 		if (std::count(intStructs.begin(), intStructs.end(), str) > 0) {
 			for (int i = 0; i < intStructs.size(); i++)
 				if (intStructs[i] == str)
-					return ExpressionType(str, ag::Type::Float, intStructSize[i].first, intStructSize[i].second);
+					return ExpressionType(str, ag::Type::Int, intStructSize[i].first, intStructSize[i].second);
 		}
 
 		// bool
@@ -1053,8 +1058,17 @@ namespace sd
 	}
 
 	void GLSLTranslator::translateOperation(glsl::astOperationExpression *expression) {
+		GLSLTranslator::ExpressionType lType = evaluateExpressionType(expression->operand1);
+		GLSLTranslator::ExpressionType rType = evaluateExpressionType(expression->operand2);
+
 		translateExpression(expression->operand1);
+		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+			generateConvert(rType);
+
 		translateExpression(expression->operand2);
+		if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+			generateConvert(lType);
+
 		translateOperator(expression->operation);
 	}
 

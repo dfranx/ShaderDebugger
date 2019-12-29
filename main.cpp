@@ -36,9 +36,89 @@ void OutputVariableValue(bv_variable* val)
 		printf("%d\n", sd::AsInteger(*val));
 	else if (val->type == bv_type_object) {
 		bv_object* obj = bv_variable_get_object(*val);
-		if (strcmp(obj->type->name, "vec3") == 0) {
-			glm::vec3 vecval = sd::AsVec3(*val);
-			printf("%.4f %.4f %.4f\n", vecval.x, vecval.y, vecval.z);
+		std::string objtypeName(obj->type->name);
+
+		// vectors
+		// do additional checks... the user might have defined structure zvec5... you never know :P
+		bool isVector = false;
+		size_t vecPos = objtypeName.find("vec");
+		if (vecPos != std::string::npos && (objtypeName.size() == 4 || objtypeName.size() == 5)) // vecX or gvecX
+		{
+			u8 vecLen = sd::GetVectorSizeFromName(objtypeName.c_str());
+			if (vecPos == 0 && !isdigit(objtypeName[3]))
+				vecLen = -1;
+			else if (vecPos == 1 && !isdigit(objtypeName[4]))
+				vecLen = -1;
+
+			if (vecLen >= 2 && vecLen <= 4) {
+				bv_type vecType = sd::GetVectorTypeFromName(objtypeName.c_str());
+
+				char chType = objtypeName[0];
+				if (vecPos == 1 && chType != 'b' && chType != 'i' && chType != 'u' && chType != 'd')
+					vecType = bv_type_void;
+
+				// actual vector
+				if (vecType != bv_type_void) {
+					if (vecType == bv_type_float) {
+						glm::vec4 vecVal(0.0f);
+
+						switch (vecLen) {
+						case 2: vecVal = glm::vec4(sd::AsVector<2, float>(*val), 0.0f, 0.0f); break;
+						case 3: vecVal = glm::vec4(sd::AsVector<3, float>(*val), 0.0f); break;
+						case 4: vecVal = sd::AsVector<4, float>(*val); break;
+						}
+
+						for (u8 i = 0; i < vecLen; i++)
+							printf("%.2f ", vecVal[i]);
+						printf("\n");
+					}
+					else if (vecType == bv_type_int) {
+						glm::ivec4 vecVal(0);
+
+						switch (vecLen) {
+						case 2: vecVal = glm::ivec4(sd::AsVector<2, int>(*val), 0, 0); break;
+						case 3: vecVal = glm::ivec4(sd::AsVector<3, int>(*val), 0); break;
+						case 4: vecVal = sd::AsVector<4, int>(*val); break;
+						}
+
+						for (u8 i = 0; i < vecLen; i++)
+							printf("%d ", vecVal[i]);
+						printf("\n");
+					}
+					else if (vecType == bv_type_uint) {
+						glm::uvec4 vecVal(0u);
+
+						switch (vecLen) {
+						case 2: vecVal = glm::uvec4(sd::AsVector<2, unsigned int>(*val), 0u, 0u); break;
+						case 3: vecVal = glm::uvec4(sd::AsVector<3, unsigned int>(*val), 0u); break;
+						case 4: vecVal = sd::AsVector<4, unsigned int>(*val); break;
+						}
+
+						for (u8 i = 0; i < vecLen; i++)
+							printf("%u ", vecVal[i]);
+						printf("\n");
+					}
+					else if (vecType == bv_type_uchar) {
+						glm::bvec4 vecVal(false);
+
+						switch (vecLen) {
+						case 2: vecVal = glm::bvec4(sd::AsVector<2, bool>(*val), false, false); break;
+						case 3: vecVal = glm::bvec4(sd::AsVector<3, bool>(*val), false); break;
+						case 4: vecVal = sd::AsVector<4, bool>(*val); break;
+						}
+
+						for (u8 i = 0; i < vecLen; i++)
+							printf("%d ", (int)vecVal[i]);
+						printf("\n");
+					}
+					isVector = true;
+				}
+			}
+		}
+
+		if (!isVector)
+		{
+			// TODO: print matrices and user defined structures
 		}
 	}
 }

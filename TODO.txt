@@ -12,6 +12,9 @@ a(v.xy);
 - test: v.xyz++;
 
 - breakpoints (& conditional breakpoints -> dbg.AddBreakpoint(line, "a == 2.1f") -> compile as bool bkpt() { return condition; } -> all variables global -> copy values from the main shader )
+- Immediate(command) -> example: dbg.Immediate("a.x * 2.0f");
 - StepOut() & Continue()
 - #define & #version
+- rename Library::GLSL()& Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle()
+
 - HLSL compiler

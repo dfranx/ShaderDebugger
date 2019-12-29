@@ -201,6 +201,8 @@ namespace sd
 	void GLSLTranslator::translateVariableIdentifier(glsl::astVariableIdentifier *expression) {
 		glsl::astVariable* vdata = (glsl::astVariable*)expression->variable;
 		
+		bool found = false;
+
 		// globals
 		for (int i = 0; i < m_globals.size(); i++)
 			if (m_globals[i].Name == vdata->name) {
@@ -210,10 +212,11 @@ namespace sd
 				} else
 					m_gen.Function.SetGlobal(m_globals[i].ID);
 
-				return;
+				found = true;
+				break;
 			}
 
-		if (m_currentFunction.size() != 0) {
+		if (m_currentFunction.size() != 0 && !found) {
 			// locals
 			for (int i = 0; i < m_locals[m_currentFunction].size(); i++) {
 				if (m_locals[m_currentFunction][i] == vdata->name) {
@@ -222,12 +225,14 @@ namespace sd
 						else m_gen.Function.GetLocal(i);
 					} else
 						m_gen.Function.SetLocal(i);
-					return;
+
+					found = true;
+					break;
 				}
 			}
 
 			// arguments
-			for (int i = 0; i < m_func.size(); i++) {
+			for (int i = 0; i < m_func.size() && !found; i++) {
 				if (m_func[i].Name != m_currentFunction)
 					continue;
 
@@ -238,10 +243,21 @@ namespace sd
 							else m_gen.Function.GetArgument(j);
 						} else
 							m_gen.Function.SetArgument(j);
-						return;
+
+						found = true;
+						break;
 					}
 				}
 			}
+		}
+
+		if (!found) {
+			if (!m_isSet) {
+				if (m_usePointer) m_gen.Function.GetGlobalPointerByName(vdata->name);
+				else m_gen.Function.GetGlobalByName(vdata->name);
+			}
+			else
+				m_gen.Function.SetGlobalByName(vdata->name);
 		}
 	}
 

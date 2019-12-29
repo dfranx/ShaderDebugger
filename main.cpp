@@ -24,6 +24,24 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
     return ret;
 }
 
+void OutputVariableValue(bv_variable* val)
+{
+	if (val == nullptr)
+		return;
+
+	if (val->type == bv_type_float)
+		printf("%.4f\n", sd::AsFloat(*val));
+	else if (val->type == bv_type_int)
+		printf("%d\n", sd::AsInteger(*val));
+	else if (val->type == bv_type_object) {
+		bv_object* obj = bv_variable_get_object(*val);
+		if (strcmp(obj->type->name, "vec3") == 0) {
+			glm::vec3 vecval = sd::AsVec3(*val);
+			printf("%.4f %.4f %.4f\n", vecval.x, vecval.y, vecval.z);
+		}
+	}
+}
+
 int main() {
 	std::ifstream t("shader.glsl");
 	std::string src((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
@@ -124,19 +142,7 @@ int main() {
 				if (val == nullptr)
 					val = dbg.GetValue(tokens[1]);
 
-				if (val != nullptr) {
-					if (val->type == bv_type_float)
-						printf("%.4f\n", sd::AsFloat(*val));
-					else if (val->type == bv_type_int)
-						printf("%d\n", sd::AsInteger(*val));
-					else if (val->type == bv_type_object) {
-						bv_object* obj = bv_variable_get_object(*val);
-						if (strcmp(obj->type->name, "vec3") == 0) {
-							glm::vec3 vecval = sd::AsVec3(*val);
-							printf("%.4f %.4f %.4f\n", vecval.x, vecval.y, vecval.z);
-						}
-					}
-				}
+				OutputVariableValue(val);
 			}
 		}
 		else if (tokens[0] == "func")
@@ -149,6 +155,14 @@ int main() {
 					printf(" -> ");
 			}
 			printf("\n");
+		}
+	}
+
+	printf("Output:\n");
+	for (const auto& gl : globals) {
+		if (gl.Storage == sd::Variable::StorageType::Out) {
+			printf("\t%s = ", gl.Name.c_str());
+			OutputVariableValue(dbg.GetValue(gl.Name));
 		}
 	}
 

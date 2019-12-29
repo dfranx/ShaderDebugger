@@ -2,7 +2,6 @@
 
 GLSL BlueVM implementation:
 - samplers
-- test gl_FragCoord, etc... -> should generate get_global_by_name opcode
 - finish GLSL bv_library
 - implement $$discard function
 - convert (when necessary) i/u/b/dvecX to vecX in op_assign, in function calls, etc...

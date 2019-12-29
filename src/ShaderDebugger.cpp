@@ -140,6 +140,8 @@ namespace sd
 				bv_function_step(m_stepper);
 				tempDone = bv_function_stepper_is_done(m_stepper);
 			}
+
+			done = tempDone;
 		}
 
 		return !done;

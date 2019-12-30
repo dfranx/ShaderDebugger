@@ -240,50 +240,48 @@ namespace sd
 		/* swizzle */
 		bv_variable GLSLswizzle(bv_program* prog, bv_object* obj, const bv_string field)
 		{
-			if (strcmp(obj->type->name, "vec3") == 0) {
-				const char* rgba = "rgba\0";
-				const char* xyzw = "xyzw\0";
-				const char* stpq = "stpq\0";
+			const char* rgba = "rgba\0";
+			const char* xyzw = "xyzw\0";
+			const char* stpq = "stpq\0";
 
-				char name[4][2] = { 0 };
-				for (int j = 0; j < strlen(field); j++)
-					for (int i = 0; i < 4; i++) {
-						if (field[j] == rgba[i])
-							name[j][0] = xyzw[i];
-						else if (field[j] == stpq[i])
-							name[j][0] = xyzw[i];
-						else if (field[j] == xyzw[i])
-							name[j][0] = xyzw[i];
-					}
+			char name[4][2] = { 0 };
+			for (int j = 0; j < strlen(field); j++)
+				for (int i = 0; i < 4; i++) {
+					if (field[j] == rgba[i])
+						name[j][0] = xyzw[i];
+					else if (field[j] == stpq[i])
+						name[j][0] = xyzw[i];
+					else if (field[j] == xyzw[i])
+						name[j][0] = xyzw[i];
+				}
 
-				printf("[DEBUG] swizzle: %s\n", field);
+			printf("[DEBUG] swizzle: %s\n", field);
 
-				if (strlen(field) == 1)
-					return bv_variable_create_pointer(bv_object_get_property(obj, name[0]));
-				else if (strlen(field) == 2) {
-					bv_variable ret = create_vec(prog, obj->prop[0].type, 2);
-					bv_object* vec = bv_variable_get_object(ret);
-					bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
-					bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
-					return ret;
-				}
-				else if (strlen(field) == 3) {
-					bv_variable ret = create_vec(prog, obj->prop[0].type, 3);
-					bv_object* vec = bv_variable_get_object(ret);
-					bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
-					bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
-					bv_object_set_property(vec, "z", bv_variable_create_pointer(bv_object_get_property(obj, name[2])));
-					return ret;
-				}
-				else if (strlen(field) == 4) {
-					bv_variable ret = create_vec(prog, obj->prop[0].type, 4);
-					bv_object* vec = bv_variable_get_object(ret);
-					bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
-					bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
-					bv_object_set_property(vec, "z", bv_variable_create_pointer(bv_object_get_property(obj, name[2])));
-					bv_object_set_property(vec, "4", bv_variable_create_pointer(bv_object_get_property(obj, name[3])));
-					return ret;
-				}
+			if (strlen(field) == 1)
+				return bv_variable_create_pointer(bv_object_get_property(obj, name[0]));
+			else if (strlen(field) == 2) {
+				bv_variable ret = create_vec(prog, obj->prop[0].type, 2);
+				bv_object* vec = bv_variable_get_object(ret);
+				bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
+				bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
+				return ret;
+			}
+			else if (strlen(field) == 3) {
+				bv_variable ret = create_vec(prog, obj->prop[0].type, 3);
+				bv_object* vec = bv_variable_get_object(ret);
+				bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
+				bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
+				bv_object_set_property(vec, "z", bv_variable_create_pointer(bv_object_get_property(obj, name[2])));
+				return ret;
+			}
+			else if (strlen(field) == 4) {
+				bv_variable ret = create_vec(prog, obj->prop[0].type, 4);
+				bv_object* vec = bv_variable_get_object(ret);
+				bv_object_set_property(vec, "x", bv_variable_create_pointer(bv_object_get_property(obj, name[0])));
+				bv_object_set_property(vec, "y", bv_variable_create_pointer(bv_object_get_property(obj, name[1])));
+				bv_object_set_property(vec, "z", bv_variable_create_pointer(bv_object_get_property(obj, name[2])));
+				bv_object_set_property(vec, "w", bv_variable_create_pointer(bv_object_get_property(obj, name[3])));
+				return ret;
 			}
 		}
 

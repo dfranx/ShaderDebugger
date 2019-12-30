@@ -2564,7 +2564,7 @@ namespace sd
 			return bv_variable_create_float(0.0f);
 		}
 
-		/* floating-point functions */
+		/* floating-point */
 		bv_variable lib_glsl_floatBitsToInt(bv_program* prog, u8 count, bv_variable* args)
 		{
 			/* floatBitsToInt(genType) */
@@ -2814,6 +2814,201 @@ namespace sd
 			return create_vec4(prog, glm::unpackSnorm4x8(bv_variable_get_uint(args[0])));
 		}
 
+		/* vector */
+		bv_variable lib_glsl_cross(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec3 cross(vec3, vec3) */
+			glm::vec3 x = sd::AsVector<3, float>(args[0]);
+			glm::vec3 y = sd::AsVector<3, float>(args[1]);
+
+			return create_vec3(prog, glm::cross(x,y));
+		}
+		bv_variable lib_glsl_distance(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* float distance(genType) */
+			bv_variable ret = bv_variable_create_float(0.0f);
+			if (args[0].type == bv_type_object) {
+				glm::vec4 x = sd::AsVector<4, float>(args[0]);
+				glm::vec4 y = sd::AsVector<4, float>(args[1]);
+				bv_variable_set_float(&ret, glm::distance(x, y));
+			}
+			else {
+				float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+				bv_variable_set_float(&ret, glm::distance(x, y));
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_dot(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* float dot(genType) */
+			bv_variable ret = bv_variable_create_float(0.0f);
+			if (args[0].type == bv_type_object) {
+				glm::vec4 x = sd::AsVector<4, float>(args[0]);
+				glm::vec4 y = sd::AsVector<4, float>(args[1]);
+				bv_variable_set_float(&ret, glm::dot(x, y));
+			}
+			else {
+				float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+				bv_variable_set_float(&ret, glm::dot(x, y));
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_equal(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX equal(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_equal(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_faceforward(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* genType faceforward(genType,genType,genType) */
+			if (args[0].type == bv_type_object) {
+				u16 vecSize = bv_variable_get_object(args[0])->type->props.name_count;
+
+				glm::vec4 n = sd::AsVector<4, float>(args[0]);
+				glm::vec4 i = sd::AsVector<4, float>(args[1]);
+				glm::vec4 nref = sd::AsVector<4, float>(args[2]);
+
+				glm::vec4 retData = glm::faceforward(n, i, nref);
+
+				bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+				bv_object* retObj = bv_variable_get_object(ret);
+				for (u16 i = 0; i < vecSize; i++)
+					retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+				return ret;
+			}
+			else {
+				float n = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				float i = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+				float nref = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+				return bv_variable_create_float(glm::faceforward(n, i, nref));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_length(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* float length(genType) */
+			bv_variable ret = bv_variable_create_float(0.0f);
+			if (args[0].type == bv_type_object) {
+				glm::vec4 x = sd::AsVector<4, float>(args[0]);
+				bv_variable_set_float(&ret, glm::length(x));
+			}
+			else {
+				float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				bv_variable_set_float(&ret, glm::length(x));
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_normalize(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* genType normalize(genType) */
+			if (args[0].type == bv_type_object) {
+				glm::vec4 x = sd::AsVector<4, float>(args[0]);
+				glm::vec4 retData = glm::normalize(x);
+
+				u16 vecSize = bv_variable_get_object(args[0])->type->props.name_count;
+				bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+				bv_object* retObj = bv_variable_get_object(ret);
+				for (u16 i = 0; i < vecSize; i++)
+					retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+			}
+			else {
+				float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				return bv_variable_create_float(x);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_notEqual(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX notEqual(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+			
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_not_equal(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_reflect(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* genType reflect(genType,genType,genType) */
+			if (args[0].type == bv_type_object) {
+				u16 vecSize = bv_variable_get_object(args[0])->type->props.name_count;
+
+				glm::vec4 i = sd::AsVector<4, float>(args[0]);
+				glm::vec4 n = sd::AsVector<4, float>(args[1]);
+
+				glm::vec4 retData = glm::reflect(i,n);
+
+				bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+				bv_object* retObj = bv_variable_get_object(ret);
+				for (u16 i = 0; i < vecSize; i++)
+					retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+				return ret;
+			}
+			else {
+				float i = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				float n = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+				return bv_variable_create_float(glm::reflect(i, n));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_refract(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* genType refract(genType,genType,genType) */
+			if (args[0].type == bv_type_object) {
+				u16 vecSize = bv_variable_get_object(args[0])->type->props.name_count;
+
+				glm::vec4 i = sd::AsVector<4, float>(args[0]);
+				glm::vec4 n = sd::AsVector<4, float>(args[1]);
+				float eta = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+				glm::vec4 retData = glm::refract(i, n, eta);
+
+				bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+				bv_object* retObj = bv_variable_get_object(ret);
+				for (u16 i = 0; i < vecSize; i++)
+					retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+				return ret;
+			}
+			else {
+				float i = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+				float n = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+				float eta = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+				return bv_variable_create_float(glm::refract(i, n, eta));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+
 		/* texture() */
 		bv_variable lib_glsl_texture(bv_program* prog, u8 count, bv_variable* args)
 		{
@@ -2833,7 +3028,7 @@ namespace sd
 					/* else if samplerCube, isampler2D ... */
 				}
 			}
-
+			
 			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
 		}
 
@@ -3015,6 +3210,18 @@ namespace sd
 			bv_library_add_function(lib, "unpackUnorm4x8", lib_glsl_unpackUnorm4x8);
 			bv_library_add_function(lib, "unpackSnorm4x8", lib_glsl_unpackSnorm4x8);
 			
+			// vector
+			bv_library_add_function(lib, "cross", lib_glsl_cross);
+			bv_library_add_function(lib, "distance", lib_glsl_distance);
+			bv_library_add_function(lib, "dot", lib_glsl_dot);
+			bv_library_add_function(lib, "equal", lib_glsl_equal);
+			bv_library_add_function(lib, "faceforward", lib_glsl_faceforward);
+			bv_library_add_function(lib, "length", lib_glsl_length);
+			bv_library_add_function(lib, "normalize", lib_glsl_normalize);
+			bv_library_add_function(lib, "notEqual", lib_glsl_notEqual);
+			bv_library_add_function(lib, "reflect", lib_glsl_reflect);
+			bv_library_add_function(lib, "refract", lib_glsl_refract);
+
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);
 

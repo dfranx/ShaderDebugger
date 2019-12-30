@@ -42,6 +42,9 @@ set(SOURCES
 	libs/BlueVM/src/bv_type.c
 	libs/BlueVM/src/bv_variable.c
 	libs/BlueVM/src/types.c
+
+# FastNoise
+	libs/FastNoise/FastNoise.cpp
 )
 
 # cmake toolchain 

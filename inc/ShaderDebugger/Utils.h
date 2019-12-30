@@ -37,6 +37,8 @@ namespace sd
 	sd::Matrix AsMatrix(const bv_variable& var);
 	float AsFloat(const bv_variable& var);
 	int AsInteger(const bv_variable& var);
+	unsigned int AsUnsignedInteger(const bv_variable& var);
+	unsigned int AsBool(const bv_variable& var);
 
 	u8 GetVectorSizeFromName(const char* name);
 	bv_type GetVectorTypeFromName(const char* name);

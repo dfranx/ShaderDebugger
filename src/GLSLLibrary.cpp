@@ -2,6 +2,7 @@
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Matrix.h>
 #include <ShaderDebugger/Utils.h>
+#include <FastNoise/FastNoise.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -10,6 +11,13 @@ namespace sd
 {
 	namespace Library
 	{
+		/*
+			TODO: 
+				- dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine
+				- fwidth, fwidthCoarse, fwidthFine
+				- reimplement noise functions so that they follow the "rules"
+		*/
+
 		// helper functions:
 		bv_variable create_vec3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f))
 		{
@@ -283,6 +291,57 @@ namespace sd
 				bv_object_set_property(vec, "w", bv_variable_create_pointer(bv_object_get_property(obj, name[3])));
 				return ret;
 			}
+		}
+
+		/* noise */
+		static FastNoise lib_glsl_noiseGenerator; // I know... this takes least time, i'll have to reimplement noise functions anyway
+		float noise1(glm::vec4 pos)
+		{
+			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
+			lib_glsl_noiseGenerator.SetSeed(40000);
+			return lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+		}
+		glm::vec2 noise2(glm::vec4 pos)
+		{
+			glm::vec2 ret(0.0f);
+
+			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
+			lib_glsl_noiseGenerator.SetSeed(40000);
+			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(41000);
+			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+
+			return ret;
+		}
+		glm::vec3 noise3(glm::vec4 pos)
+		{
+			glm::vec3 ret(0.0f);
+
+			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
+			lib_glsl_noiseGenerator.SetSeed(40000);
+			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(41000);
+			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(42000);
+			ret.z = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+
+			return ret;
+		}
+		glm::vec4 noise4(glm::vec4 pos)
+		{
+			glm::vec4 ret(0.0f);
+
+			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
+			lib_glsl_noiseGenerator.SetSeed(40000);
+			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(41000);
+			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(42000);
+			ret.z = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			lib_glsl_noiseGenerator.SetSeed(43000);
+			ret.w = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+
+			return ret;
 		}
 
 		/* vectors and operators */
@@ -798,20 +857,20 @@ namespace sd
 			return bv_variable_create_void();
 		}
 		
-		/* trigonometry functions */
+		/* trigonometry */
 		bv_variable lib_glsl_acos(bv_program* prog, u8 count, bv_variable* args)
 		{
 			/* acos(genType) */
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // acos(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // acos takes only float vectors
+					glm::vec4 vecData = glm::acos(sd::AsVector<4, float>(args[0])); // acos takes only float vectors
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::acos(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -819,7 +878,7 @@ namespace sd
 					return bv_variable_create_float(glm::acos(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
 			}
 
-			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+			return bv_variable_create_float(0.0f); // acos() must have 1 argument!
 		}
 		bv_variable lib_glsl_acosh(bv_program* prog, u8 count, bv_variable* args)
 		{
@@ -827,13 +886,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // acosh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // acosh takes only float vectors
+					glm::vec4 vecData = glm::acosh(sd::AsVector<4, float>(args[0])); // acosh takes only float vectors
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::acosh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -849,13 +908,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // asin(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // asin takes only float vectors
+					glm::vec4 vecData = glm::asin(sd::AsVector<4, float>(args[0])); // asin takes only float vectors
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::asin(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -871,13 +930,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // asinh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // asinh takes only float vectors
+					glm::vec4 vecData = glm::asinh(sd::AsVector<4, float>(args[0])); // asinh takes only float vectors
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::asinh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -893,13 +952,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // atan(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::atan(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::atan(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -940,13 +999,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // atanh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::atanh(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::atanh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -962,13 +1021,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // cos(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::cos(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::cos(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -984,13 +1043,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // cosh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::cosh(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::cosh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1006,13 +1065,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // sin(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::sin(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::sin(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1028,13 +1087,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // sinh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::sinh(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::sinh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1050,13 +1109,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // tan(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::tan(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::tan(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1072,13 +1131,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // tanh(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::tanh(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::tanh(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1094,13 +1153,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // degrees(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::degrees(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::degrees(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1116,13 +1175,13 @@ namespace sd
 			if (count == 1) {
 				if (args[0].type == bv_type_object) { // radians(vec3), ...
 					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 vecData = glm::radians(sd::AsVector<4, float>(args[0]));
 
 					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);
 
 					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_create_float(glm::radians(vecData[i]));
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
 
 					return ret;
 				}
@@ -1133,34 +1192,1377 @@ namespace sd
 			return bv_variable_create_float(0.0f);
 		}
 
-		/* floor() */
-		bv_variable lib_glsl_floor(bv_program* prog, u8 count, bv_variable* args)
+		/* mathematics */
+		bv_variable lib_glsl_abs(bv_program* prog, u8 count, bv_variable* args)
 		{
+			/* abs(genType), abs(genIType) */
 			if (count == 1) {
-				if (args[0].type == bv_type_object) { // floor(vec3), ...
-					bv_variable ret = bv_variable_copy(args[0]); // modify a copy of the argument and return it
-					bv_object* vec = bv_variable_get_object(ret);
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
 
-					if (strcmp(vec->type->name, "vec3") == 0) {
-						float xVal = bv_variable_get_float(*bv_object_get_property(vec, "x"));
-						float yVal = bv_variable_get_float(*bv_object_get_property(vec, "y"));
-						float zVal = bv_variable_get_float(*bv_object_get_property(vec, "z"));
+					// abs(vec)
+					if (vec->prop[0].type == bv_type_float) {
+						glm::vec4 vecData = glm::abs(sd::AsVector<4, float>(args[0]));
 
-						bv_object_set_property(vec, "x", bv_variable_create_float(floor(xVal)));
-						bv_object_set_property(vec, "y", bv_variable_create_float(floor(yVal)));
-						bv_object_set_property(vec, "z", bv_variable_create_float(floor(zVal)));
-					} /* else if vec4, vec2 ... */
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
 
-					return ret;
-				} else {
-					bv_variable ret = bv_variable_cast(bv_type_float, args[0]);
-					bv_variable_set_float(&ret, floor(bv_variable_get_float(ret)));
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// abs(ivec)
+					else if (vec->prop[0].type == bv_type_int) {
+						glm::ivec4 vecData = glm::abs(sd::AsVector<4, int>(args[0])); // acos takes only float vectors
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+				}
+				else if (args[0].type == bv_type_float)
+					return bv_variable_create_float(glm::abs(bv_variable_get_float(args[0])));
+				else
+					return bv_variable_create_int(glm::abs(bv_variable_get_int(args[0])));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_ceil(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* ceil(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::ceil(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
 					return ret;
 				}
+				else // ceil(scalar)
+					return bv_variable_create_float(glm::ceil(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
 			}
-			
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_clamp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* clamp(genType, genType, genType), clamp(genType, float, float), also for genIType and genUType */
+			if (count == 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					if (vec->prop[0].type == bv_type_float)
+					{
+						glm::vec4 minVal(0.0f), maxVal(0.0f);
+						
+						// get minBound
+						if (args[1].type == bv_type_object)
+							minVal = sd::AsVector<4, float>(args[1]);
+						else
+							minVal = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+						// get maxBound
+						if (args[2].type == bv_type_object)
+							maxVal = sd::AsVector<4, float>(args[2]);
+						else
+							maxVal = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[2])));
+
+						glm::vec4 vecData = glm::clamp(sd::AsVector<4, float>(args[0]), minVal, maxVal);
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// using: genUType, uint
+					else if (vec->prop[0].type == bv_type_uint)
+					{
+						glm::uvec4 minVal(0u), maxVal(0u);
+
+						// get minBound
+						if (args[1].type == bv_type_object)
+							minVal = sd::AsVector<4, unsigned int>(args[1]);
+						else
+							minVal = glm::uvec4(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1])));
+
+						// get maxBound
+						if (args[2].type == bv_type_object)
+							maxVal = sd::AsVector<4, unsigned int>(args[2]);
+						else
+							maxVal = glm::uvec4(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[2])));
+
+						glm::uvec4 vecData = glm::clamp(sd::AsVector<4, unsigned int>(args[0]), minVal, maxVal);
+
+						bv_variable ret = create_vec(prog, bv_type_uint, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+						return ret;
+					}
+					// using: genIType, int
+					else if (vec->prop[0].type == bv_type_int)
+					{
+						glm::ivec4 minVal(0u), maxVal(0u);
+
+						// get minBound
+						if (args[1].type == bv_type_object)
+							minVal = sd::AsVector<4, int>(args[1]);
+						else
+							minVal = glm::ivec4(bv_variable_get_int(bv_variable_cast(bv_type_int, args[1])));
+
+						// get maxBound
+						if (args[2].type == bv_type_object)
+							maxVal = sd::AsVector<4, int>(args[2]);
+						else
+							maxVal = glm::ivec4(bv_variable_get_int(bv_variable_cast(bv_type_int, args[2])));
+
+						glm::ivec4 vecData = glm::clamp(sd::AsVector<4, int>(args[0]), minVal, maxVal);
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+
+				}
+
+				// clamp(float, float, float)
+				else if (args[0].type == bv_type_float) {
+					float val = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float minVal = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+					float maxVal = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+					return bv_variable_create_float(glm::clamp(val, minVal, maxVal));
+				}
+
+				// clamp(uint, uint, uint)
+				else if (args[0].type == bv_type_uint) {
+					unsigned int val = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]));
+					unsigned int minVal = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
+					unsigned int maxVal = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[2]));
+
+					return bv_variable_create_uint(glm::clamp(val, minVal, maxVal));
+				}
+
+				// clamp(int, int, int)
+				else if (args[0].type == bv_type_int) {
+					int val = bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]));
+					int minVal = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+					int maxVal = bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
+
+					return bv_variable_create_int(glm::clamp(val, minVal, maxVal));
+				}
+
+			}
+
 			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
 		}
+		bv_variable lib_glsl_dFdx(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			
+			// IMPLEMENTATION IDEA: prog->user_data is pointer to sd::ShaderDebugger, maybe call dbg->Execute()
+			// 2x2 (the block of fragments) and just shift gl_FragCoord.xy since we know
+			// that the user is running GLSL code. 
+			// OR: make ShaderDebugger run the shader for 3 other values beforehand
+			
+			/* dFdx(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdx(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				} else {} // dFdx(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_dFdy(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			/* dFdy(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdy(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // dFdy(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_dFdxCoarse(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			/* dFdxCoarse(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdxCoarse(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // dFdxCoarse(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_dFdyCoarse(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			/* dFdyCoarse(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdyCoarse(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // dFdyCoarse(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_dFdxFine(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			/* dFdxFine(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdxFine(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // dFdxFine(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_dFdyFine(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			/* dFdyFine(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // dFdyFine(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // dFdyFine(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_exp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* exp(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // exp(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::exp(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // exp(scalar)
+					return bv_variable_create_float(glm::exp(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_exp2(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* exp2(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // exp2(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::exp2(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // exp2(scalar)
+					return bv_variable_create_float(glm::exp2(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_floor(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* floor(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::floor(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // floor(scalar)
+					return bv_variable_create_float(glm::floor(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_fma(bv_program* prog, u8 count, bv_variable* args)
+		{
+			// a * b + c
+			/* fma(genType, genType, genType), fma(genDType, genDType, genDType)  */
+			if (count == 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 a = sd::AsVector<4, float>(args[0]);
+					glm::vec4 b = sd::AsVector<4, float>(args[1]);
+					glm::vec4 c = sd::AsVector<4, float>(args[2]);
+
+					glm::vec4 vecData = glm::fma(a,b,c);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+
+				}
+
+				// fma(float, float, float)
+				else {
+					float a = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float b = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+					float c = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+					return bv_variable_create_float(glm::fma(a,b,c));
+				}
+			}
+
+			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+		}
+		bv_variable lib_glsl_fract(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* fract(genType), fract(genDType)  */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 vecData = glm::fract(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+
+				}
+				// fract(float)
+				else {
+					float scalarData = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					return bv_variable_create_float(glm::fract(scalarData));
+				}
+			}
+
+			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+		}
+		bv_variable lib_glsl_fwidth(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO: requires dFdx/y */
+			/* fwidth(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // fwidth(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // fwidth(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_fwidthCoarse(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO: requires dFdx/yCoarse */
+			/* fwidthCoarse(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // fwidthCoarse(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // fwidthCoarse(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_fwidthFine(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO: requires dFdx/yFine */
+			/* fwidthFine(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // fwidthFine(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					return create_vec(prog, bv_type_float, vec->type->props.name_count);
+				}
+				else {} // fwidthFine(scalar)
+			}
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_inversesqrt(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* inversesqrt(genType), inversesqrt(genDType)  */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 vecData = glm::inversesqrt(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+
+				}
+				// inversesqrt(float)
+				else {
+					float scalarData = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					return bv_variable_create_float(glm::inversesqrt(scalarData));
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_isinf(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* isinf(genType), isinf(genDType)  */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::bvec4 vecData = glm::isinf(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_uchar, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uchar(vecData[i]);
+
+					return ret;
+
+				}
+				// isinf(float)
+				else {
+					float scalarData = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					return bv_variable_create_uchar(glm::isinf(scalarData));
+				}
+			}
+
+			return bv_variable_create_uchar(0);
+		}
+		bv_variable lib_glsl_isnan(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* isnan(genType), isnan(genDType)  */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::bvec4 vecData = glm::isnan(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_uchar, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uchar(vecData[i]);
+
+					return ret;
+
+				}
+				// isnan(float)
+				else {
+					float scalarData = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					return bv_variable_create_uchar(glm::isnan(scalarData));
+				}
+			}
+
+			return bv_variable_create_uchar(0);
+		}
+		bv_variable lib_glsl_log(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* log(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // log(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::log(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // log(scalar)
+					return bv_variable_create_float(glm::log(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_log2(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* log2(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // exp2(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::log2(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // log2(scalar)
+					return bv_variable_create_float(glm::log2(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_max(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* max(genType, genType), max(genType, float), also for genIType and genUType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					if (vec->prop[0].type == bv_type_float)
+					{
+						glm::vec4 x = sd::AsVector<4, float>(args[0]);
+						glm::vec4 y(0.0f);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, float>(args[1]);
+						else
+							y = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+						glm::vec4 vecData = glm::max(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// using: genUType, uint
+					else if (vec->prop[0].type == bv_type_uint)
+					{
+						glm::uvec4 x = sd::AsVector<4, unsigned int>(args[0]);
+						glm::uvec4 y(0u);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, unsigned int>(args[1]);
+						else
+							y = glm::uvec4(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1])));
+
+						glm::uvec4 vecData = glm::max(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_uint, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+						return ret;
+					}
+					// using: genIType, int
+					else if (vec->prop[0].type == bv_type_int)
+					{
+						glm::ivec4 x = sd::AsVector<4, int>(args[0]);
+						glm::ivec4 y(0);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, int>(args[1]);
+						else
+							y = glm::ivec4(bv_variable_get_int(bv_variable_cast(bv_type_int, args[1])));
+
+						glm::ivec4 vecData = glm::max(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+
+				}
+
+				// max(float, float)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+					return bv_variable_create_float(glm::max(x, y));
+				}
+
+				// max(uint, uint)
+				else if (args[0].type == bv_type_uint) {
+					unsigned int x = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]));
+					unsigned int y = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
+
+					return bv_variable_create_uint(glm::max(x, y));
+				}
+
+				// max(int, int)
+				else if (args[0].type == bv_type_int) {
+					int x = bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]));
+					int y = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+					return bv_variable_create_int(glm::max(x, y));
+				}
+
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_min(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* min(genType, genType), min(genType, float), also for genIType and genUType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					if (vec->prop[0].type == bv_type_float)
+					{
+						glm::vec4 x = sd::AsVector<4, float>(args[0]);
+						glm::vec4 y(0.0f);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, float>(args[1]);
+						else
+							y = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+						glm::vec4 vecData = glm::min(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// using: genUType, uint
+					else if (vec->prop[0].type == bv_type_uint)
+					{
+						glm::uvec4 x = sd::AsVector<4, unsigned int>(args[0]);
+						glm::uvec4 y(0u);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, unsigned int>(args[1]);
+						else
+							y = glm::uvec4(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1])));
+
+						glm::uvec4 vecData = glm::min(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_uint, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+						return ret;
+					}
+					// using: genIType, int
+					else if (vec->prop[0].type == bv_type_int)
+					{
+						glm::ivec4 x = sd::AsVector<4, int>(args[0]);
+						glm::ivec4 y(0);
+
+						// get y
+						if (args[1].type == bv_type_object)
+							y = sd::AsVector<4, int>(args[1]);
+						else
+							y = glm::ivec4(bv_variable_get_int(bv_variable_cast(bv_type_int, args[1])));
+
+						glm::ivec4 vecData = glm::min(x, y);
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+
+				}
+
+				// min(float, float)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+					return bv_variable_create_float(glm::min(x, y));
+				}
+
+				// min(uint, uint)
+				else if (args[0].type == bv_type_uint) {
+					unsigned int x = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]));
+					unsigned int y = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
+
+					return bv_variable_create_uint(glm::min(x, y));
+				}
+
+				// min(int, int)
+				else if (args[0].type == bv_type_int) {
+					int x = bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]));
+					int y = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+					return bv_variable_create_int(glm::min(x, y));
+				}
+
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_mix(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* mix(genType, genType, genType), mix(genType, genType, float), mix(genI/U/B/Type, genI/U/BType, genBType) */
+			if (count == 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double, genBType
+					if (vec->prop[0].type == bv_type_float)
+					{
+						glm::vec4 x = sd::AsVector<4, float>(args[0]);
+						glm::vec4 y = sd::AsVector<4, float>(args[1]);
+						glm::vec4 a(0.0f);
+
+						// get a
+						if (args[2].type == bv_type_object)
+							a = sd::AsVector<4, float>(args[2]);
+						else
+							a = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[2])));
+
+						glm::vec4 vecData = glm::mix(x, y, a);
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// using: genUType, genBType
+					else if (vec->prop[0].type == bv_type_uint)
+					{
+						glm::uvec4 x = sd::AsVector<4, unsigned int>(args[0]);
+						glm::uvec4 y = sd::AsVector<4, unsigned int>(args[1]);
+						glm::vec4 a = sd::AsVector<4, float>(args[2]);
+
+						glm::uvec4 vecData = glm::mix(x, y, a);
+
+						bv_variable ret = create_vec(prog, bv_type_uint, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+						return ret;
+					}
+					// using: genIType, genBType
+					else if (vec->prop[0].type == bv_type_int)
+					{
+						glm::ivec4 x = sd::AsVector<4, int>(args[0]);
+						glm::ivec4 y = sd::AsVector<4, int>(args[1]);
+						glm::vec4 a = sd::AsVector<4, float>(args[2]);
+
+						glm::ivec4 vecData = glm::mix(x, y, a);
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+					// using: genBType, genBType
+					else if (vec->prop[0].type == bv_type_uchar)
+					{
+						glm::bvec4 x = sd::AsVector<4, bool>(args[0]);
+						glm::bvec4 y = sd::AsVector<4, bool>(args[1]);
+						glm::vec4 a = sd::AsVector<4, float>(args[2]);
+
+						glm::bvec4 vecData = glm::mix(x, y, a);
+
+						bv_variable ret = create_vec(prog, bv_type_uchar, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_uchar(vecData[i]);
+
+						return ret;
+					}
+
+				}
+
+				// mix(float, float, float/bool)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+					float a = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+					return bv_variable_create_float(glm::mix(x, y, a));
+				}
+
+				// mix(uint, uint, bool)
+				else if (args[0].type == bv_type_uint) {
+					unsigned int x = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]));
+					unsigned int y = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
+					float a = (float)bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[2]));
+
+					return bv_variable_create_uint(glm::mix(x, y, a));
+				}
+
+				// mix(int, int, bool)
+				else if (args[0].type == bv_type_int) {
+					int x = bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]));
+					int y = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+					float a = (float)bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
+
+					return bv_variable_create_int(glm::mix(x, y, a));
+				}
+
+				// mix(bool, bool, bool)
+				else if (args[0].type == bv_type_uchar) {
+					bool x = bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[0]));
+					bool y = bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[1]));
+					float a = (float)bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[2]));
+
+					return bv_variable_create_uchar(glm::mix(x, y, a));
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_mod(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* mod(genType, genType), mod(genType, float), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::vec4 y(0.0f);
+
+					// get y
+					if (args[1].type == bv_type_object)
+						y = sd::AsVector<4, float>(args[1]);
+					else
+						y = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+					glm::vec4 vecData = glm::mod(x, y);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+
+				// mod(float, float)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+					return bv_variable_create_float(glm::mod(x, y));
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_modf(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* modf(genType, out genType), modf(float, out float), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::vec4 retData(0.0f), outValData(0.0f);
+
+					retData = glm::modf(x, outValData);
+
+					// param out value
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_object* outObj = bv_variable_get_object(*outPtr);
+					for (u16 i = 0; i < outObj->type->props.name_count; i++)
+						outObj->prop[i] = bv_variable_create_float(outValData[i]);
+
+					// return value
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+					return ret;
+				}
+
+				// modf(float, float)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float outVal = 0.0f;
+					
+					float retVal = glm::modf(x, outVal);
+
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_variable_set_float(outPtr, outVal);
+
+					return bv_variable_create_float(retVal);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_noise1(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* noise1(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::ceil(sd::AsVector<4, float>(args[0]));
+
+					return bv_variable_create_float(noise1(vecData));
+				}
+				else // noise1(scalar)
+					return bv_variable_create_float(noise1(glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f, 0.0f, 0.0f)));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_noise2(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = create_vec2(prog);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			/* noise2(genType) */
+			if (count == 1) {
+				glm::vec2 noiseData(0.0f);
+
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::ceil(sd::AsVector<4, float>(args[0]));
+
+					noiseData = noise2(vecData);
+				}
+				else // noise2(scalar)
+					noiseData = noise2(glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f, 0.0f, 0.0f));
+
+				retObj->prop[0] = bv_variable_create_float(noiseData.x);
+				retObj->prop[1] = bv_variable_create_float(noiseData.y);
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_noise3(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = create_vec3(prog);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			/* noise2(genType) */
+			if (count == 1) {
+				glm::vec3 noiseData(0.0f);
+
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::ceil(sd::AsVector<4, float>(args[0]));
+
+					noiseData = noise3(vecData);
+				}
+				else // noise2(scalar)
+					noiseData = noise3(glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f, 0.0f, 0.0f));
+
+				retObj->prop[0] = bv_variable_create_float(noiseData.x);
+				retObj->prop[1] = bv_variable_create_float(noiseData.y);
+				retObj->prop[2] = bv_variable_create_float(noiseData.z);
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_noise4(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = create_vec4(prog);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			/* noise2(genType) */
+			if (count == 1) {
+				glm::vec4 noiseData(0.0f);
+
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::ceil(sd::AsVector<4, float>(args[0]));
+
+					noiseData = noise4(vecData);
+				}
+				else // noise2(scalar)
+					noiseData = noise4(glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f, 0.0f, 0.0f));
+
+				retObj->prop[0] = bv_variable_create_float(noiseData.x);
+				retObj->prop[1] = bv_variable_create_float(noiseData.y);
+				retObj->prop[2] = bv_variable_create_float(noiseData.z);
+				retObj->prop[3] = bv_variable_create_float(noiseData.w);
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_pow(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* pow(genType y, genType x) */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* x = bv_variable_get_object(args[0]);
+					glm::vec4 xData = sd::AsVector<4, float>(args[0]);
+
+					bv_object* y = bv_variable_get_object(args[1]);
+					glm::vec4 yData = sd::AsVector<4, float>(args[1]);
+
+					glm::vec4 resData = glm::pow(xData, yData);
+
+					bv_variable ret = create_vec(prog, bv_type_float, y->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(resData[i]);
+
+					return ret;
+				}
+				else
+					return bv_variable_create_float(
+						glm::pow(
+							bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])),
+							bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]))
+						)
+					);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_round(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* round(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::round(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // cos(scalar)
+					return bv_variable_create_float(glm::round(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_roundEven(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* round(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::roundEven(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // cos(scalar)
+					return bv_variable_create_float(glm::roundEven(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_sign(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* sign(genType), sign(genIType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// sign(vec)
+					if (vec->prop[0].type == bv_type_float) {
+						glm::vec4 vecData = glm::sign(sd::AsVector<4, float>(args[0]));
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					// sign(ivec)
+					else if (vec->prop[0].type == bv_type_int) {
+						glm::ivec4 vecData = glm::sign(sd::AsVector<4, int>(args[0])); // acos takes only float vectors
+
+						bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+						return ret;
+					}
+				}
+				else if (args[0].type == bv_type_float)
+					return bv_variable_create_float(glm::sign(bv_variable_get_float(args[0])));
+				else
+					return bv_variable_create_int(glm::sign(bv_variable_get_int(args[0])));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_smoothstep(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* mix(genType, genType, genType), mix(float, float, genType) also for genDType */
+			if (count == 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double, genBType
+					glm::vec4 edge0 = sd::AsVector<4, float>(args[0]);
+					glm::vec4 edge1 = sd::AsVector<4, float>(args[1]);
+					glm::vec4 x(0.0f);
+
+					// get a
+					if (args[2].type == bv_type_object)
+						x = sd::AsVector<4, float>(args[2]);
+					else
+						x = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[2])));
+					
+
+					glm::vec4 vecData(0.0f);
+					
+					u8 vecSize = vec->type->props.name_count;
+
+					if (vecSize == 2) {
+						glm::vec2 res = glm::smoothstep(glm::vec2(edge0.x, edge0.y), glm::vec2(edge1.x, edge1.y), glm::vec2(x.x, x.y));
+						vecData.x = res.x; vecData.y = res.y;
+					}
+					else if (vecSize == 3) {
+						glm::vec3 res = glm::smoothstep(glm::vec3(edge0.x, edge0.y, edge0.z), glm::vec3(edge1.x, edge1.y, edge1.z), glm::vec3(x.x, x.y, x.z));
+						vecData.x = res.x; vecData.y = res.y; vecData.z = res.z;
+					}
+					else if (vecSize == 4)
+						vecData = glm::smoothstep(edge0, edge1, x);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+
+				// smoothstep(float, float, genType)
+				else {
+					float edge0 = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float edge1 = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+					
+					// get x
+					if (args[2].type == bv_type_object) {
+						glm::vec4 x = sd::AsVector<4, float>(args[2]);
+
+						bv_object* vec = bv_variable_get_object(args[2]);
+
+						glm::vec4 vecData(0.0f);
+
+						u8 vecSize = vec->type->props.name_count;
+
+						if (vecSize == 2) {
+							glm::vec2 res = glm::smoothstep(edge0, edge1, glm::vec2(x.x, x.y));
+							vecData.x = res.x; vecData.y = res.y;
+						}
+						else if (vecSize == 3) {
+							glm::vec3 res = glm::smoothstep(edge0, edge1, glm::vec3(x.x, x.y, x.z));
+							vecData.x = res.x; vecData.y = res.y; vecData.z = res.z;
+						}
+						else if (vecSize == 4)
+							vecData = glm::smoothstep(edge0, edge1, x);
+
+
+						bv_variable ret = create_vec(prog, bv_type_float, vecSize);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+						return ret;
+					}
+					else {
+						float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+						return bv_variable_create_float(glm::smoothstep(edge0, edge1, x));
+					}
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_sqrt(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* sqrt(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // sqrt(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::sqrt(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // sqrt(scalar)
+					return bv_variable_create_float(glm::sqrt(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_step(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* step(genType, genType), step(float, genType) */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 edge = sd::AsVector<4, float>(args[0]);
+					glm::vec4 x(0.0f);
+
+					// get x
+					if (args[1].type == bv_type_object)
+						x = sd::AsVector<4, float>(args[1]);
+					else
+						x = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+					glm::vec4 vecData = glm::step(edge, x);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+
+				// step(float, float)
+				else if (args[0].type == bv_type_float) {
+					glm::vec4 edge(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])));
+
+					// get x
+					if (args[1].type == bv_type_object) {
+						glm::vec4 x = sd::AsVector<4, float>(args[1]);
+						bv_object* vec = bv_variable_get_object(args[1]);
+
+						glm::vec4 retData = glm::step(edge, x);
+
+						bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_create_float(retData[i]);
+
+						return ret;
+					} else
+						return bv_variable_create_float(
+									glm::step(edge.x, bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])))
+								);
+				}
+
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_trunc(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* trunc(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // trunc(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::trunc(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // trunc(scalar)
+					return bv_variable_create_float(glm::trunc(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+
+		/* texture() */
 		bv_variable lib_glsl_texture(bv_program* prog, u8 count, bv_variable* args)
 		{
 			if (count >= 2) {
@@ -1300,8 +2702,46 @@ namespace sd
 			bv_library_add_function(lib, "degrees", lib_glsl_degrees);
 			bv_library_add_function(lib, "radians", lib_glsl_radians);
 
-			// floor()
+			// mathematics
+			bv_library_add_function(lib, "abs", lib_glsl_abs);
+			bv_library_add_function(lib, "ceil", lib_glsl_ceil);
+			bv_library_add_function(lib, "clamp", lib_glsl_clamp);
+			bv_library_add_function(lib, "dFdx", lib_glsl_dFdx);
+			bv_library_add_function(lib, "dFdy", lib_glsl_dFdy);
+			bv_library_add_function(lib, "dFdxCoarse", lib_glsl_dFdxCoarse);
+			bv_library_add_function(lib, "dFdyCoarse", lib_glsl_dFdyCoarse);
+			bv_library_add_function(lib, "dFdxFine", lib_glsl_dFdxFine);
+			bv_library_add_function(lib, "dFdyFine", lib_glsl_dFdyFine);
+			bv_library_add_function(lib, "exp", lib_glsl_exp);
+			bv_library_add_function(lib, "exp2", lib_glsl_exp2);
 			bv_library_add_function(lib, "floor", lib_glsl_floor);
+			bv_library_add_function(lib, "fma", lib_glsl_fma);
+			bv_library_add_function(lib, "fract", lib_glsl_fract);
+			bv_library_add_function(lib, "fwidth", lib_glsl_fwidth);
+			bv_library_add_function(lib, "fwidthCoarse", lib_glsl_fwidthCoarse);
+			bv_library_add_function(lib, "fwidthFine", lib_glsl_fwidthFine);
+			bv_library_add_function(lib, "inversesqrt", lib_glsl_inversesqrt);
+			bv_library_add_function(lib, "isinf", lib_glsl_isinf);
+			bv_library_add_function(lib, "isnan", lib_glsl_isnan);
+			bv_library_add_function(lib, "log", lib_glsl_log);
+			bv_library_add_function(lib, "log2", lib_glsl_log2);
+			bv_library_add_function(lib, "max", lib_glsl_max);
+			bv_library_add_function(lib, "min", lib_glsl_min);
+			bv_library_add_function(lib, "mix", lib_glsl_mix);
+			bv_library_add_function(lib, "mod", lib_glsl_mod);
+			bv_library_add_function(lib, "modf", lib_glsl_modf);
+			bv_library_add_function(lib, "noise1", lib_glsl_noise1);
+			bv_library_add_function(lib, "noise2", lib_glsl_noise2);
+			bv_library_add_function(lib, "noise3", lib_glsl_noise3);
+			bv_library_add_function(lib, "noise4", lib_glsl_noise4);
+			bv_library_add_function(lib, "pow", lib_glsl_noise4);
+			bv_library_add_function(lib, "round", lib_glsl_round);
+			bv_library_add_function(lib, "roundEven", lib_glsl_roundEven);
+			bv_library_add_function(lib, "sign", lib_glsl_sign);
+			bv_library_add_function(lib, "smoothstep", lib_glsl_smoothstep);
+			bv_library_add_function(lib, "sqrt", lib_glsl_sqrt);
+			bv_library_add_function(lib, "step", lib_glsl_step);
+			bv_library_add_function(lib, "trunc", lib_glsl_trunc);
 
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);

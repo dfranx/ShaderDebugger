@@ -129,6 +129,9 @@ namespace sd
 		bool m_caseIfDefault;
 		size_t m_caseIfAddr;
 
+		std::unordered_map<std::string, std::vector<int>> m_builtInFuncsPtrs;
+		void m_buildFuncArgPtrs();
+
 		bool m_writeIndexDepth;
 		int m_indexDepth;
 	};

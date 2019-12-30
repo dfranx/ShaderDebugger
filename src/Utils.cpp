@@ -50,9 +50,21 @@ namespace sd
 	}
 	int AsInteger(const bv_variable& var)
 	{
-		if (var.type == bv_type_int)
+		if (bv_type_is_integer(var.type))
 			return bv_variable_get_int(var);
 		return 0;
+	}
+	unsigned int AsUnsignedInteger(const bv_variable& var)
+	{
+		if (bv_type_is_integer(var.type))
+			return bv_variable_get_uint(var);
+		return 0u;
+	}
+	unsigned int AsBool(const bv_variable& var)
+	{
+		if (bv_type_is_integer(var.type))
+			return (bool)bv_variable_get_uchar(var);
+		return false;
 	}
 
 	u8 GetVectorSizeFromName(const char* name)

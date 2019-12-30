@@ -23,6 +23,8 @@ namespace sd
 		m_entryFunction = entry;
 		m_gen.SetHeader(0, 2);
 
+		m_buildFuncArgPtrs();
+
 		int shaderType = glsl::astTU::kVertex;
 		if (type == ShaderType::Pixel)
 			shaderType = glsl::astTU::kFragment;
@@ -346,7 +348,19 @@ namespace sd
 			paramTypes[i] = m_convertExprType(data.Arguments[i].Type);
 
 		for (int i = expression->parameters.size() - 1; i >= 0; i--) {
+			bool temp_usePointer = m_usePointer;
+			
+			if (data.Name.empty()) {
+				if (m_builtInFuncsPtrs.count(expression->name) > 0)
+					if (std::count(m_builtInFuncsPtrs[expression->name].begin(), m_builtInFuncsPtrs[expression->name].end(), i) > 0)
+						m_usePointer = true;
+			}
+			else if (data.Arguments[i].Storage == sd::Variable::StorageType::Out)
+				m_usePointer = true;
+			
 			translateExpression(expression->parameters[i]);
+			
+			m_usePointer = temp_usePointer;
 
 			if (!data.Name.empty() && paramTypes[i] != evaluateExpressionType(expression->parameters[i]))
 				generateConvert(paramTypes[i]);
@@ -537,6 +551,7 @@ namespace sd
 	Function GLSLTranslator::matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params)
 	{
 		Function ret;
+		ret.Name = "";
 
 		int match_args = -1;
 
@@ -1470,6 +1485,7 @@ namespace sd
 			Variable pdata;
 			pdata.ID = i;
 			pdata.Name = param->name;
+			
 			if (param->baseType->builtin)
 				pdata.Type = kTypes[((glsl::astBuiltin*)param->baseType)->type];
 			else
@@ -1478,6 +1494,17 @@ namespace sd
 			ag::Type btype = m_convertBaseType(pdata.Type);
 			if (btype == ag::Type::Void)
 				btype = ag::Type::Object;
+
+			switch (param->storage) {
+			case glsl::kConst: pdata.Storage = Variable::StorageType::Constant; break;
+			case glsl::kIn: pdata.Storage = Variable::StorageType::In; break;
+			case glsl::kOut: pdata.Storage = Variable::StorageType::Out; break;
+			case glsl::kAttribute: pdata.Storage = Variable::StorageType::Attribute; break;
+			case glsl::kUniform: pdata.Storage = Variable::StorageType::Uniform; break;
+			case glsl::kVarying: pdata.Storage = Variable::StorageType::Varying; break;
+			case glsl::kBuffer: pdata.Storage = Variable::StorageType::Buffer; break;
+			case glsl::kShared: pdata.Storage = Variable::StorageType::Shared; break;
+			}
 
 			argTypes.push_back(btype);
 			argNames.push_back(pdata.Type);
@@ -1588,5 +1615,11 @@ namespace sd
 			translateGlobalVariable(tu->globals[i]);
 		for (size_t i = 0; i < tu->functions.size(); i++)
 			translateFunction(tu->functions[i]);
+	}
+
+	void GLSLTranslator::m_buildFuncArgPtrs()
+	{
+		m_builtInFuncsPtrs.clear();
+		m_builtInFuncsPtrs["modf"].push_back(1); // second argument is out
 	}
 }

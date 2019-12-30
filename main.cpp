@@ -34,6 +34,10 @@ void OutputVariableValue(bv_variable* val)
 		printf("%.4f\n", sd::AsFloat(*val));
 	else if (val->type == bv_type_int)
 		printf("%d\n", sd::AsInteger(*val));
+	else if (val->type == bv_type_uint)
+		printf("%u\n", sd::AsUnsignedInteger(*val));
+	else if (val->type == bv_type_uchar)
+		printf("%d\n", (int)sd::AsBool(*val));
 	else if (val->type == bv_type_object) {
 		bv_object* obj = bv_variable_get_object(*val);
 		std::string objtypeName(obj->type->name);

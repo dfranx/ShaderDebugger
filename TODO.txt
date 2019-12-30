@@ -6,10 +6,12 @@ GLSL BlueVM implementation:
 - Immediate(command) -> example: dbg.Immediate("a.x * 2.0f");
 - StepOut() & Continue()
 - #define & #version
-- rename Library::GLSL()& Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle()
+- rename Library::GLSL() & Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle()
+- move DiscardFunction to libGLSL
 
 - test arrays
 - test variables with no initial value
 - HLSL compiler
 
+- [FUTURE] mat4 m; m[0].x = 1.0f;
 - [FUTURE] test: mat4 m[4]; m[0][0][0];

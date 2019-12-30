@@ -634,7 +634,7 @@ namespace sd
 					// mat * mat
 					if (obj->type->props.name_count == 0) {
 						sd::Matrix* retMat = copy_mat_data(myData);
-						retMat->Data = retMat->Data * ((sd::Matrix*)obj->user_data)->Data;
+						retMat->Data = retMat->Data * ((sd::Matrix*)obj->user_data)->Data; // elements outside of the matrix should be 0.0f, so we don't care if we just multiply two 4x4 mats
 
 						ret = create_mat(prog, me->type->name, retMat);
 					}
@@ -672,6 +672,39 @@ namespace sd
 				}
 			}
 			return ret;
+		}
+		bv_variable lib_glsl_mat_operator_equal(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			sd::Matrix* myData = (sd::Matrix*)me->user_data;
+			bv_variable ret = bv_variable_create_uchar(0);
+			if (count == 1)
+			{
+				if (args[0].type == bv_type_object)
+				{
+					bv_object* obj = bv_variable_get_object(args[0]);
+
+					// mat == mat
+					if (obj->type->props.name_count == 0) {
+						u8 res = (myData->Data == ((sd::Matrix*)obj->user_data)->Data);
+						bv_variable_set_uchar(&ret, res);
+					}
+				}
+			}
+			return ret;
+		}
+		bv_variable lib_glsl_mat_operator_increment(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			if (count == 0)
+				((sd::Matrix*)me->user_data)->Data++;
+
+			return bv_variable_create_void();
+		}
+		bv_variable lib_glsl_mat_operator_decrement(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			if (count == 0)
+				((sd::Matrix*)me->user_data)->Data--;
+
+			return bv_variable_create_void();
 		}
 		bv_variable lib_glsl_mat_operator_array_get(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
@@ -765,6 +798,341 @@ namespace sd
 			return bv_variable_create_void();
 		}
 		
+		/* trigonometry functions */
+		bv_variable lib_glsl_acos(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* acos(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // acos(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // acos takes only float vectors
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::acos(vecData[i]));
+
+					return ret;
+				}
+				else // acos(scalar)
+					return bv_variable_create_float(glm::acos(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+		}
+		bv_variable lib_glsl_acosh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* acosh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // acosh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // acosh takes only float vectors
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::acosh(vecData[i]));
+
+					return ret;
+				}
+				else // acosh(scalar)
+					return bv_variable_create_float(glm::acosh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+		}
+		bv_variable lib_glsl_asin(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* asin(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // asin(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // asin takes only float vectors
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::asin(vecData[i]));
+
+					return ret;
+				}
+				else
+					return bv_variable_create_float(glm::asin(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f); // asin() must have 1 argument!
+		}
+		bv_variable lib_glsl_asinh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* asinh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // asinh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // asinh takes only float vectors
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::asinh(vecData[i]));
+
+					return ret;
+				}
+				else // asinh(scalar)
+					return bv_variable_create_float(glm::asinh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_atan(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* atan(genType y_over_x) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // atan(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::atan(vecData[i]));
+
+					return ret;
+				}
+				else
+					return bv_variable_create_float(glm::atan(bv_variable_get_float(args[0])));
+			}
+			/* atan(genType y, genType x) */
+			else if (count == 2) {
+				if (args[0].type == bv_type_object) { // atan(vec3), ...
+					bv_object* y = bv_variable_get_object(args[0]);
+					glm::vec4 yData = sd::AsVector<4, float>(args[0]);
+
+					bv_object* x = bv_variable_get_object(args[1]);
+					glm::vec4 xData = sd::AsVector<4, float>(args[1]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, y->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::atan(yData[i], xData[i]));
+
+					return ret;
+				}
+				else
+					return bv_variable_create_float(
+						glm::atan(
+							bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 
+							bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]))
+						)
+					);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_atanh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* atanh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // atanh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::atanh(vecData[i]));
+
+					return ret;
+				}
+				else // atanh(scalar)
+					return bv_variable_create_float(glm::atanh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_cos(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* cos(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // cos(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::cos(vecData[i]));
+
+					return ret;
+				}
+				else // cos(scalar)
+					return bv_variable_create_float(glm::cos(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_cosh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* cosh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // cosh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::cosh(vecData[i]));
+
+					return ret;
+				}
+				else // cosh(scalar)
+					return bv_variable_create_float(glm::cosh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_sin(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* sin(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // sin(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::sin(vecData[i]));
+
+					return ret;
+				}
+				else
+					return bv_variable_create_float(glm::sin(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_sinh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* sinh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // sinh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::sinh(vecData[i]));
+
+					return ret;
+				}
+				else // sinh(scalar)
+					return bv_variable_create_float(glm::sinh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_tan(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* tan(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // tan(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::tan(vecData[i]));
+
+					return ret;
+				}
+				else // tan(scalar)
+					return bv_variable_create_float(glm::tan(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_tanh(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* tanh(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // tanh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::tanh(vecData[i]));
+
+					return ret;
+				}
+				else // tanh(scalar)
+					return bv_variable_create_float(glm::tanh(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_degrees(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* degrees(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // degrees(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::degrees(vecData[i]));
+
+					return ret;
+				}
+				else // degrees(scalar)
+					return bv_variable_create_float(glm::degrees(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_radians(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* radians(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // radians(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(glm::radians(vecData[i]));
+
+					return ret;
+				}
+				else // radians(scalar)
+					return bv_variable_create_float(glm::radians(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+
 		/* floor() */
 		bv_variable lib_glsl_floor(bv_program* prog, u8 count, bv_variable* args)
 		{
@@ -854,6 +1222,9 @@ namespace sd
 
 			bv_object_info_add_ext_method(mat, "*", lib_glsl_mat_operator_multiply);
 			bv_object_info_add_ext_method(mat, "+", lib_glsl_mat_operator_add);
+			bv_object_info_add_ext_method(mat, "++", lib_glsl_mat_operator_increment);
+			bv_object_info_add_ext_method(mat, "--", lib_glsl_mat_operator_decrement);
+			bv_object_info_add_ext_method(mat, "==", lib_glsl_mat_operator_equal);
 			bv_object_info_add_ext_method(mat, "[]", lib_glsl_mat_operator_array_get);
 			bv_object_info_add_ext_method(mat, "[]=", lib_glsl_mat_operator_array_set);
 
@@ -912,6 +1283,22 @@ namespace sd
 			// sampler2D
 			bv_object_info* sampler2D = bv_object_info_create("sampler2D");
 			bv_library_add_object_info(lib, sampler2D);
+
+			// trigonometry
+			bv_library_add_function(lib, "acos", lib_glsl_acos);
+			bv_library_add_function(lib, "acosh", lib_glsl_acosh);
+			bv_library_add_function(lib, "asin", lib_glsl_asin);
+			bv_library_add_function(lib, "asinh", lib_glsl_asinh);
+			bv_library_add_function(lib, "atan", lib_glsl_atan);
+			bv_library_add_function(lib, "atanh", lib_glsl_atanh);
+			bv_library_add_function(lib, "acos", lib_glsl_cos);
+			bv_library_add_function(lib, "acosh", lib_glsl_cosh);
+			bv_library_add_function(lib, "asin", lib_glsl_sin);
+			bv_library_add_function(lib, "asinh", lib_glsl_sinh);
+			bv_library_add_function(lib, "atan", lib_glsl_tan);
+			bv_library_add_function(lib, "atanh", lib_glsl_tanh);
+			bv_library_add_function(lib, "degrees", lib_glsl_degrees);
+			bv_library_add_function(lib, "radians", lib_glsl_radians);
 
 			// floor()
 			bv_library_add_function(lib, "floor", lib_glsl_floor);

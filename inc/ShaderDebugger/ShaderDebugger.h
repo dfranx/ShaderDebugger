@@ -11,6 +11,8 @@ extern "C" {
 
 namespace sd
 {
+	bv_variable DiscardFunction(bv_program* prog, u8 count, bv_variable* args);
+
 	class ShaderDebugger
 	{
 	public:
@@ -38,6 +40,9 @@ namespace sd
 				m_prog = bv_program_create(m_bytecode.data());
 				if (m_prog == nullptr)
 					return false; // invalid bytecode
+
+				m_prog->user_data = (void*)this;
+				bv_program_add_function(m_prog, "$$discard", DiscardFunction);
 
 				m_prog->property_getter = m_transl->PropertyGetter;
 					
@@ -78,8 +83,13 @@ namespace sd
 
 		bv_variable* GetValue(const std::string& gvarname);
 
+		inline void SetDiscarded(bool d) { m_discarded = d; }
+		inline bool IsDiscarded() { return m_discarded; }
+
 	private:
 		Function m_getFunctionInfo(const std::string& fname);
+
+		bool m_discarded;
 
 		Translator* m_transl;
 		std::string m_entry;

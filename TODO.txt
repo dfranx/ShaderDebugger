@@ -2,12 +2,6 @@
 
 GLSL BlueVM implementation:
 - finish GLSL bv_library
-- implement $$discard function
-- test:
-float a(vec3 b) { return 1.0f; }
-float a(vec2 b) { return 2.0f; }
-a(v.xy);
-
 - breakpoints (& conditional breakpoints -> dbg.AddBreakpoint(line, "a == 2.1f") -> compile as bool bkpt() { return condition; } -> all variables global -> copy values from the main shader )
 - Immediate(command) -> example: dbg.Immediate("a.x * 2.0f");
 - StepOut() & Continue()
@@ -18,4 +12,4 @@ a(v.xy);
 - test variables with no initial value
 - HLSL compiler
 
-- [FUTURE] mat4 m[4]; m[0][0][0];
+- [FUTURE] test: mat4 m[4]; m[0][0][0];

@@ -2,12 +2,20 @@
 
 namespace sd
 {
+	bv_variable DiscardFunction(bv_program* prog, u8 count, bv_variable* args)
+	{
+		ShaderDebugger* dbgr = (ShaderDebugger*)prog->user_data;
+		dbgr->SetDiscarded(true);
+		return bv_variable_create_void();
+	}
+
 	ShaderDebugger::ShaderDebugger()
 	{
 		m_prog = nullptr;
 		m_library = nullptr;
 		m_stepper = nullptr;
 		m_transl = nullptr;
+		m_discarded = false;
 	}
 	ShaderDebugger::~ShaderDebugger()
 	{
@@ -26,6 +34,7 @@ namespace sd
 		if (funcPtr == nullptr)
 			return bv_variable_create_void(); // function doesn't exist
 
+		SetDiscarded(false);
 
 		// call function and store its return value
 		return bv_program_call(m_prog, funcPtr, args, NULL);
@@ -145,6 +154,8 @@ namespace sd
 		if (!done) {
 			int curLine = m_prog->current_line;
 			bool tempDone = done;
+
+			SetDiscarded(false);
 
 			while (curLine == m_prog->current_line && !tempDone) {
 				bv_function_step(m_stepper);

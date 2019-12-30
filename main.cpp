@@ -263,6 +263,8 @@ int main() {
 		}
 	}
 
+	printf("Discarded: %d\n", (int)dbg.IsDiscarded());
+
 	printf("Output:\n");
 	for (const auto& gl : globals) {
 		if (gl.Storage == sd::Variable::StorageType::Out) {

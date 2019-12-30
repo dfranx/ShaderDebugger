@@ -3,7 +3,6 @@
 GLSL BlueVM implementation:
 - finish GLSL bv_library
 - implement $$discard function
-- convert (when necessary) i/u/b/dvecX to vecX in op_assign, in function calls, etc...
 - test: v.xz = 1.0f;
 - test:
 float a(vec3 b) { return 1.0f; }
@@ -17,4 +16,8 @@ a(v.xy);
 - #define & #version
 - rename Library::GLSL()& Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle()
 
+- test arrays
+- test variables with no initial value
 - HLSL compiler
+
+- [FUTURE] mat4 m[4]; m[0][0][0];

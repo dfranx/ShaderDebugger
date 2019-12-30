@@ -18,6 +18,8 @@ namespace sd
 		m_usePointer = false;
 		m_caseIfDefault = false;
 		m_caseIfAddr = 0;
+		m_indexDepth = 0;
+		m_writeIndexDepth = false;
 		m_entryFunction = entry;
 		m_gen.SetHeader(0, 2);
 
@@ -150,6 +152,7 @@ namespace sd
 			}
 		}
 
+		var.IsArray = variable->isArray;
 		var.Smooth = false;
 		var.Flat = false;
 		var.NoPerspective = false;
@@ -280,20 +283,58 @@ namespace sd
 		// first push index
 		translateExpression(expression->index);
 
+		m_indexDepth++;
+
+		bool isArray = true;
+		if (expression->operand->type == glsl::astExpression::kVariableIdentifier) {
+			glsl::astVariableIdentifier* varInfo = (glsl::astVariableIdentifier*)expression->operand;
+
+			for (const auto& loc : m_locals[m_currentFunction])
+				if (loc == varInfo->variable->name)
+					isArray = false; // TODO: after local arrays have been implemented, rewrite this part
+
+			if (isArray) {
+				for (const auto& glob : m_globals)
+					if (glob.Name == varInfo->variable->name) {
+						isArray = glob.IsArray;
+						break;
+					}
+			}
+
+			// TODO: m_indexDetph-arraySize when using an array of matrices, example: mat4 m[4]; m[0][0][0];
+			if (m_writeIndexDepth || m_isSet) {
+				if (!isArray) // which means it must be an object
+					m_gen.Function.PushStack((char)m_indexDepth);//objects require index count
+			}
+		}
+
 		// then array
-		bool temp_isSet = m_isSet;
+		bool temp_isSet = m_isSet, temp_writeIndexDepth = m_writeIndexDepth;
 		m_isSet = false;
+		m_writeIndexDepth = temp_isSet;
 		translateExpression(expression->operand);
+		m_writeIndexDepth = false;
 		m_isSet = temp_isSet;
 
 		if (expression->operand->type == glsl::astExpression::kVariableIdentifier) {
-			if (m_isSet) m_gen.Function.SetArrayElement();
-			else m_gen.Function.GetArrayElement();
+			if (m_isSet || (temp_writeIndexDepth && !isArray))
+				m_gen.Function.SetArrayElement();
+			else
+				m_gen.Function.GetArrayElement();
 
+			m_indexDepth = 0;
+
+
+			if (m_isSet || (temp_writeIndexDepth && !isArray)) {
+				temp_isSet = m_isSet;
+				if (!m_isSet)
+					m_isSet = true;
+				translateExpression(expression->operand);
+				m_isSet = temp_isSet;
+			}
 		}
-		
-		if (m_isSet)
-			translateExpression(expression->operand);
+		else if (!m_isSet)
+			m_gen.Function.GetArrayElement();
 	}
 
 	void GLSLTranslator::translateFunctionCall(glsl::astFunctionCall *expression) {
@@ -670,8 +711,26 @@ namespace sd
 			// TODO: matrices & arrays (?)
 
 			// vector[index]
-			if (operandType.Columns * operandType.Rows > 1 && operandType.Name.find("vec") != std::string::npos)
-				operandType.Columns = operandType.Rows = 1;
+			if (operandType.Columns * operandType.Rows > 1) {
+				if (operandType.Name.find("vec") != std::string::npos) {
+					if (operandType.Type == ag::Type::Float)
+						operandType.Name = "float";
+					else if (operandType.Type == ag::Type::Int)
+						operandType.Name = "int";
+					else if (operandType.Type == ag::Type::UInt)
+						operandType.Name = "uint";
+					else if (operandType.Type == ag::Type::UChar)
+						operandType.Name = "bool";
+
+					operandType.Columns = operandType.Rows = 1;
+				}
+				else if (operandType.Name.find("mat") != std::string::npos) {
+					operandType.Name = "vec" + std::to_string(operandType.Rows);
+
+					operandType.Columns = operandType.Rows; // dummy me switched cols and rows for vectors...
+					operandType.Rows = 1;
+				}
+			}
 
 			return operandType;
 		} break;
@@ -897,8 +956,8 @@ namespace sd
 					else if (right.Rows != 1) {
 						ag::Type newType = m_mergeBaseType(left.Type, right.Type);
 
-						int rows = left.Rows;
-						int cols = left.Columns;
+						int rows = right.Rows;
+						int cols = right.Columns;
 
 						std::string newName = "mat";
 						if (rows == cols)

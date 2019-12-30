@@ -12,6 +12,7 @@ namespace sd
 			ID = InputSlot = 0;
 			Name = Type = "";
 			Smooth = Flat = NoPerspective = false;
+			IsArray = false;
 			Storage = StorageType::None;
 		}
 
@@ -35,5 +36,6 @@ namespace sd
 		std::string Name;
 		std::string Type;
 		bool Smooth, Flat, NoPerspective;
+		bool IsArray;
 	};
 }

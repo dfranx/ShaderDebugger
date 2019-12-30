@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ShaderDebugger/Matrix.h>
 #include <glm/glm.hpp>
 
 extern "C" {
@@ -33,9 +34,13 @@ namespace sd
 
 		return ret;
 	}
+	sd::Matrix AsMatrix(const bv_variable& var);
 	float AsFloat(const bv_variable& var);
 	int AsInteger(const bv_variable& var);
 
 	u8 GetVectorSizeFromName(const char* name);
 	bv_type GetVectorTypeFromName(const char* name);
+
+	void GetMatrixSizeFromName(const char* name, int* cols, int* rows);
+	bv_type GetMatrixTypeFromName(const char* name);
 }

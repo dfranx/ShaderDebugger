@@ -118,7 +118,20 @@ void OutputVariableValue(bv_variable* val)
 
 		if (!isVector)
 		{
-			// TODO: print matrices and user defined structures
+			// matrices
+			if (sd::GetMatrixTypeFromName(objtypeName.c_str()) != bv_type_void)
+			{
+				sd::Matrix mat = sd::AsMatrix(*val);
+				for (int x = 0; x < mat.Columns; x++) {
+					for (int y = 0; y < mat.Rows; y++)
+						printf("%7.2f ", mat.Data[x][y]);
+					printf("\n");
+				}
+			}
+			else
+			{
+				// TODO: user defined structures
+			}
 		}
 	}
 }
@@ -164,6 +177,7 @@ int main() {
 					dbg.SetValue(global.Name, "vec3", glm::vec3(x, y, z));
 				}
 			}
+			// TODO: matrix
 		}
 	}
 

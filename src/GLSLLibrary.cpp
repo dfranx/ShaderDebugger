@@ -1,5 +1,6 @@
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <ShaderDebugger/Texture.h>
+#include <ShaderDebugger/Matrix.h>
 #include <ShaderDebugger/Utils.h>
 #include <string.h>
 #include <stdio.h>
@@ -145,6 +146,16 @@ namespace sd
 			return ret;
 		}
 
+		bv_variable create_mat(bv_program* prog, const char* name, sd::Matrix* mat)
+		{
+			bv_variable ret = bv_variable_create_object(bv_program_get_object_info(prog, name));
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			retObj->user_data = (void*)mat;
+
+			return ret;
+		}
+
 		bv_variable create_vec(bv_program* prog, bv_type type, u16 components)
 		{
 			if (components == 3) // 3D vector
@@ -202,7 +213,29 @@ namespace sd
 
 			return type1;
 		}
+		glm::vec4 multiply_mat_vec(const sd::Matrix& mat, bv_object* vec, u8 transposed = 0)
+		{
+			glm::vec4 ret(0.0f);
+			for (u16 i = 0; i < mat.Rows; i++)
+				for (u16 j = 0; j < mat.Columns; j++) {
+					float scalar = bv_variable_get_float(bv_variable_cast(bv_type_float, vec->prop[j]));
+					if (transposed)
+						ret[i] += mat.Data[i][j] * scalar;
+					else
+						ret[i] += mat.Data[j][i] * scalar;
+				}
 
+			return ret;
+		}
+		sd::Matrix* copy_mat_data(sd::Matrix* mat)
+		{
+			sd::Matrix* ret = new sd::Matrix();
+			ret->Columns = mat->Columns;
+			ret->Rows = mat->Rows;
+			ret->Type = mat->Type;
+			ret->Data = mat->Data;
+			return ret;
+		}
 
 		/* swizzle */
 		bv_variable GLSLswizzle(bv_program* prog, bv_object* obj, const bv_string field)
@@ -254,7 +287,44 @@ namespace sd
 			}
 		}
 
-		/* operators for vectors: ==, +, -, >, /, *, ++, --, ! */
+		/* vectors and operators */
+		bv_variable lib_glsl_vec_constructor(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			bv_type type = sd::GetVectorTypeFromName(me->type->name);
+			u8 size = sd::GetVectorSizeFromName(me->type->name);
+
+			if (count == 0) { // gvecX()
+				for (u16 i = 0; i < me->type->props.name_count; i++)
+					me->prop[i] = bv_variable_cast(type, bv_variable_create_float(0.0f));
+			}
+			else if (count == 1) {
+				if (args[0].type == bv_type_object) { // gvecX(fvecX)
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					for (u16 i = 0; i < me->type->props.name_count; i++)
+						me->prop[i] = bv_variable_cast(type, vec->prop[i]);
+				}
+				else { // gvecX(scalar)
+					for (u16 i = 0; i < me->type->props.name_count; i++)
+						me->prop[i] = bv_variable_cast(type, args[0]);
+				}
+			}
+			else if (count == size) { // vec3(2, true, 1.0f)
+				for (u16 i = 0; i < me->type->props.name_count; i++)
+					me->prop[i] = bv_variable_cast(type, args[i]);
+			}
+			else if (count == 2 && size == 4) { // vec4(vec2, vec2)
+				bv_object* vec1 = bv_variable_get_object(args[0]);
+				bv_object* vec2 = bv_variable_get_object(args[1]);
+
+				me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
+				me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
+				me->prop[2] = bv_variable_cast(type, vec2->prop[0]);
+				me->prop[3] = bv_variable_cast(type, vec2->prop[1]);
+			}
+
+			return bv_variable_create_void();
+		}
 		bv_variable lib_glsl_vec_operator_equal(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
 			bv_variable ret = bv_variable_create_uchar(0);
@@ -379,18 +449,29 @@ namespace sd
 			bv_variable ret = bv_variable_create_void();
 
 			if (count == 1) {
-				// vec / vec
 				if (args[0].type == bv_type_object) {
 					bv_object* vec = bv_variable_get_object(args[0]);
 
-					bv_type mtype = merge_type(me->prop[0].type, vec->prop[0].type);
+					// vec * vec
+					if (vec->type->props.name_count) {
+						bv_type mtype = merge_type(me->prop[0].type, vec->prop[0].type);
 
-					ret = create_vec(prog, mtype, me->type->props.name_count);
-					bv_object* retObj = bv_variable_get_object(ret);
+						ret = create_vec(prog, mtype, me->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
 
-					for (u16 i = 0; i < me->type->props.name_count; i++) {
-						bv_variable_deinitialize(&retObj->prop[i]);
-						retObj->prop[i] = bv_variable_cast(mtype, bv_variable_op_multiply(prog, me->prop[i], vec->prop[i]));
+						for (u16 i = 0; i < me->type->props.name_count; i++) {
+							bv_variable_deinitialize(&retObj->prop[i]);
+							retObj->prop[i] = bv_variable_cast(mtype, bv_variable_op_multiply(prog, me->prop[i], vec->prop[i]));
+						}
+					}
+					// vec * mat
+					else {
+						sd::Matrix* matData = (sd::Matrix*)vec->user_data;
+						glm::vec4 retVec = multiply_mat_vec(*matData, me, 1);
+						ret = create_vec(prog, matData->Type, me->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_cast(matData->Type, bv_variable_create_float(retVec[i]));
 					}
 				}
 			}
@@ -457,7 +538,149 @@ namespace sd
 		}
 		bv_variable lib_glsl_vec_operator_array_set(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			if (count == 2) {
+			u8 indCount = 0;
+			if (count > 1)
+				indCount = bv_variable_get_int(args[0]);
+
+			if (indCount == 1 && count > 2) {
+				int index = 0;
+
+				if (bv_type_is_integer(args[1].type))
+					index = bv_variable_get_int(args[1]);
+				else if (args[1].type == bv_type_float)
+					index = bv_variable_get_float(args[1]);
+
+				// TODO: how should we handle array index out of bounds?
+				if (index >= me->type->props.name_count)
+					index = me->type->props.name_count - 1;
+				if (index < 0)
+					index = 0;
+
+				me->prop[index] = bv_variable_cast(me->prop[index].type, args[2]);
+			}
+
+			return bv_variable_create_void();
+		}
+
+		/* matrices and operators */
+		bv_variable lib_glsl_mat_constructor(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			sd::Matrix* data = new sd::Matrix();
+			sd::GetMatrixSizeFromName(me->type->name, &data->Columns, &data->Rows);
+			data->Type = sd::GetMatrixTypeFromName(me->type->name);
+			data->Data = glm::mat4(0.0f);
+
+			bv_variable ret = bv_variable_create_void();
+			me->user_data = (void*)data;
+
+			if (count == 1) {
+				// mat(mat)
+				if (args[0].type == bv_type_object) {
+					bv_object* mat = bv_variable_get_object(args[0]);
+					sd::Matrix* copyData = (sd::Matrix*)mat->user_data;
+					
+					for (int x = 0; x < copyData->Columns && x < data->Columns; x++)
+						for (int y = 0; y < copyData->Rows && y < data->Rows; y++)
+							data->Data[x][y] = copyData->Data[x][y];
+				}
+				// mat(scalar)
+				else {
+					float scalar = bv_variable_get_float(bv_variable_cast(data->Type, args[0]));
+					data->Data = glm::mat4(scalar);
+				}
+
+			}
+			else if (count == data->Columns) // mat(col0, col1, ...)
+			{
+				for (u8 x = 0; x < data->Columns; x++) {
+					bv_object* vecCol = bv_variable_get_object(args[x]);
+					for (u8 y = 0; y < data->Rows && y < vecCol->type->props.name_count; y++)
+						data->Data[x][y] = bv_variable_get_float(bv_variable_cast(data->Type, vecCol->prop[y]));
+				}
+			}
+			else if (count == data->Columns * data->Rows) // mat(scalar, scalar, ...)
+			{
+				for (u8 x = 0; x < data->Columns; x++)
+					for (u8 y = 0; y < data->Rows; y++) {
+						float scalar = bv_variable_get_float(bv_variable_cast(data->Type, args[x*data->Columns + y]));
+						data->Data[x][y] = scalar;
+					}
+			}
+
+			return ret;
+		}
+		void lib_glsl_mat_destructor(bv_object* me)
+		{
+			if (me->user_data != 0)
+				delete (sd::Matrix*)me->user_data;
+
+			me->user_data = 0;
+		}
+		void* lib_glsl_mat_copy(void* udata)
+		{
+			if (udata != 0)
+				return (void*)copy_mat_data((sd::Matrix*)udata);
+
+			return 0;
+		}
+		bv_variable lib_glsl_mat_operator_multiply(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			sd::Matrix* myData = (sd::Matrix*)me->user_data;
+			bv_variable ret = bv_variable_create_void();
+			if (count == 1)
+			{
+				if (args[0].type == bv_type_object)
+				{
+					bv_object* obj = bv_variable_get_object(args[0]);
+
+					// mat * mat
+					if (obj->type->props.name_count == 0) {
+						sd::Matrix* retMat = copy_mat_data(myData);
+						retMat->Data = retMat->Data * ((sd::Matrix*)obj->user_data)->Data;
+
+						ret = create_mat(prog, me->type->name, retMat);
+					}
+
+					// mat * vec
+					else
+					{
+						glm::vec4 retVec = multiply_mat_vec(*myData, obj);
+						ret = create_vec(prog, myData->Type, obj->type->props.name_count);
+						bv_object* retObj = bv_variable_get_object(ret);
+						for (u16 i = 0; i < retObj->type->props.name_count; i++)
+							retObj->prop[i] = bv_variable_cast(myData->Type, bv_variable_create_float(retVec[i]));
+					}
+				}
+			}
+			return ret;
+		}
+		bv_variable lib_glsl_mat_operator_add(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			sd::Matrix* myData = (sd::Matrix*)me->user_data;
+			bv_variable ret = bv_variable_create_void();
+			if (count == 1)
+			{
+				if (args[0].type == bv_type_object)
+				{
+					bv_object* obj = bv_variable_get_object(args[0]);
+
+					// mat + mat
+					if (obj->type->props.name_count == 0) {
+						sd::Matrix* retMat = copy_mat_data(myData);
+						retMat->Data = retMat->Data + ((sd::Matrix*)obj->user_data)->Data;
+
+						ret = create_mat(prog, me->type->name, retMat);
+					}
+				}
+			}
+			return ret;
+		}
+		bv_variable lib_glsl_mat_operator_array_get(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+			sd::Matrix* myData = (sd::Matrix*)me->user_data;
+
+			if (count == 1) {
 				int index = 0;
 
 				if (bv_type_is_integer(args[0].type))
@@ -471,51 +694,79 @@ namespace sd
 				if (index < 0)
 					index = 0;
 
-				me->prop[index] = bv_variable_cast(me->prop[index].type, args[1]);
+				ret = create_vec(prog, myData->Type, myData->Rows);
+
+				bv_object* retObj = bv_variable_get_object(ret);
+				for (u16 i = 0; i < retObj->type->props.name_count; i++)
+					retObj->prop[i] = bv_variable_cast(myData->Type, bv_variable_create_float(myData->Data[index][i]));
 			}
 
-			return bv_variable_create_void();
+			return ret;
 		}
-
-		/* vec() */
-		bv_variable lib_glsl_vec_constructor(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
+		bv_variable lib_glsl_mat_operator_array_set(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
-			bv_type type = sd::GetVectorTypeFromName(me->type->name);
-			u8 size = sd::GetVectorSizeFromName(me->type->name);
+			u8 argCount = count;
+			u8 indCount = 0;
+			if (argCount > 1)
+				indCount = bv_variable_get_int(args[0]);
 
-			if (count == 0) { // gvecX()
-				for (u16 i = 0; i < me->type->props.name_count; i++)
-					me->prop[i] = bv_variable_cast(type, bv_variable_create_float(0.0f));
-			}
-			else if (count == 1) {
-				if (args[0].type == bv_type_object) { // gvecX(fvecX)
-					bv_object* vec = bv_variable_get_object(args[0]);
+			sd::Matrix* myData = (sd::Matrix*)me->user_data;
 
-					for (u16 i = 0; i < me->type->props.name_count; i++)
-						me->prop[i] = bv_variable_cast(type, vec->prop[i]);
-				}
-				else { // gvecX(scalar)
-					for (u16 i = 0; i < me->type->props.name_count; i++)
-						me->prop[i] = bv_variable_cast(type, args[0]);
-				}
-			}
-			else if (count == size) { // vec3(2, true, 1.0f)
-				for (u16 i = 0; i < me->type->props.name_count; i++)
-					me->prop[i] = bv_variable_cast(type, args[i]);
-			}
-			else if (count == 2 && size == 4) { // vec4(vec2, vec2)
-				bv_object* vec1 = bv_variable_get_object(args[0]);
-				bv_object* vec2 = bv_variable_get_object(args[1]);
+			// set vector
+			if (indCount == 1 && argCount > 2) {
+				int col = 0;
 
-				me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
-				me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
-				me->prop[2] = bv_variable_cast(type, vec2->prop[0]);
-				me->prop[3] = bv_variable_cast(type, vec2->prop[1]);
+				if (bv_type_is_integer(args[1].type))
+					col = bv_variable_get_int(args[1]);
+				else if (args[1].type == bv_type_float)
+					col = bv_variable_get_float(args[1]);
+
+				if (col >= myData->Columns)
+					col = myData->Columns - 1;
+				if (col < 0)
+					col = 0;
+
+				sd::Matrix* myData = (sd::Matrix*)me->user_data;
+
+				bv_object* retObj = bv_variable_get_object(args[2]);
+				for (u16 i = 0; i < retObj->type->props.name_count; i++)
+					myData->Data[col][i] = bv_variable_get_float(bv_variable_cast(bv_type_float, retObj->prop[i]));
+			}
+			// set float
+			else if (indCount == 2 && argCount > 3) {
+				// column
+				int col = 0;
+
+				if (bv_type_is_integer(args[1].type))
+					col = bv_variable_get_int(args[1]);
+				else if (args[1].type == bv_type_float)
+					col = bv_variable_get_float(args[1]);
+
+				if (col >= myData->Columns)
+					col = myData->Columns - 1;
+				if (col < 0)
+					col = 0;
+
+				// row
+				int row = 0;
+
+				if (bv_type_is_integer(args[2].type))
+					row = bv_variable_get_int(args[2]);
+				else if (args[1].type == bv_type_float)
+					row = bv_variable_get_float(args[2]);
+
+				if (row >= myData->Rows)
+					row = myData->Rows - 1;
+				if (row < 0)
+					row = 0;
+
+				float scalar = bv_variable_get_float(bv_variable_cast(bv_type_float, args[3]));
+				myData->Data[col][row] = scalar;
 			}
 
 			return bv_variable_create_void();
 		}
-
+		
 		/* floor() */
 		bv_variable lib_glsl_floor(bv_program* prog, u8 count, bv_variable* args)
 		{
@@ -567,7 +818,7 @@ namespace sd
 		}
 
 
-		/* helper functions to create vector definitions */
+		/* helper functions to create vector & matrix definitions */
 		bv_object_info* add_vec(bv_library* lib, const char* name, u8 comp, u8 logNot = 0)
 		{
 			bv_object_info* vec = bv_object_info_create(name);
@@ -595,6 +846,23 @@ namespace sd
 
 			return vec;
 		}
+		bv_object_info* add_mat(bv_library* lib, const char* name)
+		{
+			bv_object_info* mat = bv_object_info_create(name);
+			mat->on_delete = lib_glsl_mat_destructor;
+			mat->on_copy = lib_glsl_mat_copy;
+
+			bv_object_info_add_ext_method(mat, name, lib_glsl_mat_constructor);
+
+			bv_object_info_add_ext_method(mat, "*", lib_glsl_mat_operator_multiply);
+			bv_object_info_add_ext_method(mat, "+", lib_glsl_mat_operator_add);
+			bv_object_info_add_ext_method(mat, "[]", lib_glsl_mat_operator_array_get);
+			bv_object_info_add_ext_method(mat, "[]=", lib_glsl_mat_operator_array_set);
+
+			bv_library_add_object_info(lib, mat);
+
+			return mat;
+		}
 
 		bv_library* GLSL()
 		{
@@ -616,6 +884,32 @@ namespace sd
 			add_vec(lib, "bvec2", 2, 1);
 			add_vec(lib, "dvec2", 2);
 			add_vec(lib, "uvec2", 2);
+
+			// matrix types
+			add_mat(lib, "mat2");
+			add_mat(lib, "mat3");
+			add_mat(lib, "mat4");
+			add_mat(lib, "mat2x2");
+			add_mat(lib, "mat2x3");
+			add_mat(lib, "mat2x4");
+			add_mat(lib, "mat3x2");
+			add_mat(lib, "mat3x3");
+			add_mat(lib, "mat3x4");
+			add_mat(lib, "mat4x2");
+			add_mat(lib, "mat4x3");
+			add_mat(lib, "mat4x4");
+			add_mat(lib, "dmat2");
+			add_mat(lib, "dmat3");
+			add_mat(lib, "dmat4");
+			add_mat(lib, "dmat2x2");
+			add_mat(lib, "dmat2x3");
+			add_mat(lib, "dmat2x4");
+			add_mat(lib, "dmat3x2");
+			add_mat(lib, "dmat3x3");
+			add_mat(lib, "dmat3x4");
+			add_mat(lib, "dmat4x2");
+			add_mat(lib, "dmat4x3");
+			add_mat(lib, "dmat4x4");
 
 			// sampler2D
 			bv_object_info* sampler2D = bv_object_info_create("sampler2D");

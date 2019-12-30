@@ -15,6 +15,7 @@ namespace sd
 			TODO: 
 				- dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine
 				- fwidth, fwidthCoarse, fwidthFine
+				- double values & packDouble2x32
 				- reimplement noise functions so that they follow the "rules"
 		*/
 
@@ -1384,7 +1385,8 @@ namespace sd
 			// IMPLEMENTATION IDEA: prog->user_data is pointer to sd::ShaderDebugger, maybe call dbg->Execute()
 			// 2x2 (the block of fragments) and just shift gl_FragCoord.xy since we know
 			// that the user is running GLSL code. 
-			// OR: make ShaderDebugger run the shader for 3 other values beforehand
+			// --OR--: add a property to ShaderDebugger: glm::vec4 FragmentBlock[4] which then can be used here
+			// and user can fill the data however he wants to
 			
 			/* dFdx(genType) */
 			if (count == 1) {
@@ -2152,7 +2154,7 @@ namespace sd
 				}
 
 				// modf(float, float)
-				else if (args[0].type == bv_type_float) {
+				else {
 					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
 					float outVal = 0.0f;
 					
@@ -2562,6 +2564,256 @@ namespace sd
 			return bv_variable_create_float(0.0f);
 		}
 
+		/* floating-point functions */
+		bv_variable lib_glsl_floatBitsToInt(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* floatBitsToInt(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::floatBitsToInt(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_int, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+					return ret;
+				}
+				else // floatBitsToInt(scalar)
+					return bv_variable_create_int(glm::floatBitsToInt(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_floatBitsToUint(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* floatBitsToUint(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::uvec4 vecData = glm::floatBitsToUint(sd::AsVector<4, float>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_uint, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+					return ret;
+				}
+				else // floatBitsToUint(scalar)
+					return bv_variable_create_uint(glm::floatBitsToUint(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_frexp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* frexp(genType, out genIType), frexp(float, out int), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::vec4 signData(0.0f);
+					glm::ivec4 expValData(0.0f);
+
+					signData = glm::frexp(x, expValData);
+
+					// param out value
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_object* outObj = bv_variable_get_object(*outPtr);
+					for (u16 i = 0; i < outObj->type->props.name_count; i++)
+						outObj->prop[i] = bv_variable_create_int(expValData[i]);
+
+					// return value
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(signData[i]);
+
+					return ret;
+				}
+
+				// frexp(float, out int)
+				else {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					
+					int expVal = 0;
+					float significand = glm::frexp(x, expVal);
+
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_variable_set_int(outPtr, expVal);
+
+					return bv_variable_create_float(significand);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_intBitsToFloat(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* intBitsToFloat(genIType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::intBitsToFloat(sd::AsVector<4, int>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // intBitsToFloat(scalar)
+					return bv_variable_create_float(glm::intBitsToFloat(bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_uintBitsToFloat(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uintBitsToFloat(genUType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::uintBitsToFloat(sd::AsVector<4, unsigned int>(args[0]));
+
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // uintBitsToFloat(scalar)
+					return bv_variable_create_float(glm::uintBitsToFloat(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_ldexp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* ldexp(genType, genIType), ldexp(float, int), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::ivec4 exp = sd::AsVector<4, int>(args[1]);
+
+					glm::vec4 resData = glm::ldexp(x, exp);
+
+					// return value
+					bv_variable ret = create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(resData[i]);
+
+					return ret;
+				}
+
+				// ldexp(float, int)
+				else {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					int exp = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+					float res = glm::ldexp(x, exp);
+
+					return bv_variable_create_float(res);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_packDouble2x32(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_glsl_packHalf2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uint packHalf2x16(vec2) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object)
+					return bv_variable_create_uint(glm::packHalf2x16(sd::AsVector<2, float>(args[0])));
+			}
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_packUnorm2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uint packUnorm2x16(vec2) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object)
+					return bv_variable_create_uint(glm::packUnorm2x16(sd::AsVector<2, float>(args[0])));
+			}
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_packSnorm2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uint packUnorm2x16(vec2) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object)
+					return bv_variable_create_uint(glm::packSnorm2x16(sd::AsVector<2, float>(args[0])));
+			}
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_packUnorm4x8(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uint packUnorm4x8(vec4) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object)
+					return bv_variable_create_uint(glm::packUnorm4x8(sd::AsVector<4, float>(args[0])));
+			}
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_packSnorm4x8(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uint packSnorm4x8(vec4) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object)
+					return bv_variable_create_uint(glm::packSnorm4x8(sd::AsVector<4, float>(args[0])));
+			}
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_unpackDouble2x32(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			return create_uvec2(prog);
+		}
+		bv_variable lib_glsl_unpackHalf2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec2 unpackHalf2x16(uint) */
+			return create_vec2(prog, glm::unpackHalf2x16(bv_variable_get_uint(args[0])));
+		}
+		bv_variable lib_glsl_unpackUnorm2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec2 unpackUnorm2x16(uint) */
+			return create_vec2(prog, glm::unpackUnorm2x16(bv_variable_get_uint(args[0])));
+		}
+		bv_variable lib_glsl_unpackSnorm2x16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec2 unpackSnorm2x16(uint) */
+			return create_vec2(prog, glm::unpackSnorm2x16(bv_variable_get_uint(args[0])));
+		}
+		bv_variable lib_glsl_unpackUnorm4x8(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec2 unpackUnorm4x8(uint) */
+			return create_vec4(prog, glm::unpackUnorm4x8(bv_variable_get_uint(args[0])));
+		}
+		bv_variable lib_glsl_unpackSnorm4x8(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* vec2 unpackSnorm4x8(uint) */
+			return create_vec4(prog, glm::unpackSnorm4x8(bv_variable_get_uint(args[0])));
+		}
+
 		/* texture() */
 		bv_variable lib_glsl_texture(bv_program* prog, u8 count, bv_variable* args)
 		{
@@ -2743,6 +2995,26 @@ namespace sd
 			bv_library_add_function(lib, "step", lib_glsl_step);
 			bv_library_add_function(lib, "trunc", lib_glsl_trunc);
 
+			// floating-point functions
+			bv_library_add_function(lib, "floatBitsToInt", lib_glsl_floatBitsToInt);
+			bv_library_add_function(lib, "floatBitsToUint", lib_glsl_floatBitsToUint);
+			bv_library_add_function(lib, "frexp", lib_glsl_frexp);
+			bv_library_add_function(lib, "intBitsToFloat", lib_glsl_intBitsToFloat);
+			bv_library_add_function(lib, "uintBitsToFloat", lib_glsl_uintBitsToFloat);
+			bv_library_add_function(lib, "ldexp", lib_glsl_ldexp);
+			bv_library_add_function(lib, "packDouble2x32", lib_glsl_packDouble2x32);
+			bv_library_add_function(lib, "packHalf2x16", lib_glsl_packHalf2x16);
+			bv_library_add_function(lib, "packUnorm2x16", lib_glsl_packUnorm2x16);
+			bv_library_add_function(lib, "packSnorm2x16", lib_glsl_packSnorm2x16);
+			bv_library_add_function(lib, "packUnorm4x8", lib_glsl_packUnorm4x8);
+			bv_library_add_function(lib, "packSnorm4x8", lib_glsl_packSnorm4x8);
+			bv_library_add_function(lib, "unpackDouble2x32", lib_glsl_unpackDouble2x32);
+			bv_library_add_function(lib, "unpackHalf2x16", lib_glsl_unpackHalf2x16);
+			bv_library_add_function(lib, "unpackUnorm2x16", lib_glsl_unpackUnorm2x16);
+			bv_library_add_function(lib, "unpackSnorm2x16", lib_glsl_unpackSnorm2x16);
+			bv_library_add_function(lib, "unpackUnorm4x8", lib_glsl_unpackUnorm4x8);
+			bv_library_add_function(lib, "unpackSnorm4x8", lib_glsl_unpackSnorm4x8);
+			
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);
 

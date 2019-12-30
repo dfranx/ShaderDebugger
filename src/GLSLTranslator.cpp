@@ -1621,5 +1621,6 @@ namespace sd
 	{
 		m_builtInFuncsPtrs.clear();
 		m_builtInFuncsPtrs["modf"].push_back(1); // second argument is out
+		m_builtInFuncsPtrs["frexp"].push_back(1); // second argument is out
 	}
 }

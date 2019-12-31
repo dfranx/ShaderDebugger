@@ -4502,9 +4502,6 @@ namespace sd
 			bv_library_add_function(lib, "imulExtended", lib_glsl_imulExtended);
 			bv_library_add_function(lib, "usubBorrow", lib_glsl_usubBorrow);
 
-			// texture()
-			bv_library_add_function(lib, "texture", lib_glsl_texture);
-
 			return lib;
 		}
 	}

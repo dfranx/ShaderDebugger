@@ -146,8 +146,62 @@ namespace sd
 	void ShaderDebugger::Jump(int line)
 	{
 		while (Step()) {
-			if (GetCurrentLine() == line)
+			int curLine = GetCurrentLine();
+
+			if (m_checkBreakpoint(curLine) || curLine == line)
 				break;
+		}
+	}
+	bool ShaderDebugger::HasBreakpoint(int line)
+	{
+		for (int i = 0; i < m_breakpoints.size(); i++)
+			if (m_breakpoints[i].Line == line)
+				return true;
+		return false;
+	}
+	void ShaderDebugger::Continue()
+	{
+		while (Step()) {
+			if (m_checkBreakpoint(GetCurrentLine()))
+				break;
+		}
+	}
+	bool ShaderDebugger::m_checkBreakpoint(int line)
+	{
+		for (int i = 0; i < m_breakpoints.size(); i++) {
+			if (m_breakpoints[i].Line == line) {
+				if (!m_breakpoints[i].IsConditional)
+					return true;
+				else {
+					bv_variable condRes = Immediate(m_breakpoints[i].Condition);
+					bool ret = false;
+					if (condRes.type == bv_type_uchar || condRes.type == bv_type_char)
+						ret = bv_variable_get_uchar(condRes);
+					bv_variable_deinitialize(&condRes);
+					return ret;
+				}
+			}
+		}
+
+		return false;
+	}
+	void ShaderDebugger::AddBreakpoint(int line)
+	{
+		ClearBreakpoint(line);
+		m_breakpoints.push_back(Breakpoint(line));
+	}
+	void ShaderDebugger::AddConditionalBreakpoint(int line, std::string condition)
+	{
+		ClearBreakpoint(line);
+		m_breakpoints.push_back(Breakpoint(line, condition));
+	}
+	void ShaderDebugger::ClearBreakpoint(int line)
+	{
+		for (int i = 0; i < m_breakpoints.size(); i++) {
+			if (m_breakpoints[i].Line == line) {
+				m_breakpoints.erase(m_breakpoints.begin() + i);
+				i--;
+			}
 		}
 	}
 	bool ShaderDebugger::Step()

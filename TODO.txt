@@ -1,11 +1,9 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- breakpoints (& conditional breakpoints -> dbg.AddBreakpoint(line, "a == 2.1f") -> compile as bool bkpt() { return condition; } -> all variables global -> copy values from the main shader )
-- StepOut() & Continue()
-
 - rename Library::GLSL() & Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle(), rename lib_glsl_* -> lib_*
 - move DiscardFunction to libGLSL
+- recode vec constructor so that initalizations such as vec4(float, vec2, float) are possible
 - test params with 'out' keyword 
 - test arrays
 - test variables with no initial value

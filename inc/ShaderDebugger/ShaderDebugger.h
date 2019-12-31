@@ -1,6 +1,7 @@
 #pragma once
 #include <ShaderDebugger/Translator.h>
 #include <ShaderDebugger/Texture.h>
+#include <ShaderDebugger/Breakpoint.h>
 #include <glm/glm.hpp>
 
 #include <fstream>
@@ -78,9 +79,15 @@ namespace sd
 		bv_variable* GetLocalValue(const std::string& varname);
 		int GetCurrentLine() { return m_prog->current_line; }
 		void Jump(int line);
+		void Continue();
 		bool Step();
 		bool StepOver();
 		bool StepOut();
+		bool HasBreakpoint(int ln);
+		void AddBreakpoint(int ln);
+		void AddConditionalBreakpoint(int ln, std::string condition);
+		void ClearBreakpoint(int ln);
+		inline void ClearBreakpoints() { m_breakpoints.clear(); }
 		bv_variable Immediate(const std::string& command);
 
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)
@@ -95,9 +102,12 @@ namespace sd
 		inline bool IsDiscarded() { return m_discarded; }
 
 	private:
+		bool m_checkBreakpoint(int line);
 		Function m_getFunctionInfo(const std::string& fname);
 
 		bool m_discarded;
+
+		std::vector<Breakpoint> m_breakpoints;
 
 		sd::ShaderType m_type;
 		Translator* m_transl, *m_immTransl;

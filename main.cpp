@@ -206,10 +206,11 @@ int main() {
 			int lnBegin = std::max(0, curLine-5);
 			int lnEnd = std::min((int)srcLines.size()-1, curLine+5);
 			for (int i = lnBegin; i <= lnEnd; i++) {
+				char hasBreakpoint = dbg.HasBreakpoint(i+1) ? 'x' : ' ';
 				if (i == curLine)
-					printf(">>>> | %s\n", srcLines[i].c_str());
+					printf(">>>>%c| %s\n", hasBreakpoint, srcLines[i].c_str());
 				else
-					printf("%4d | %s\n", i+1, srcLines[i].c_str());
+					printf("%4d%c| %s\n", i+1, hasBreakpoint, srcLines[i].c_str());
 			}
 			hasStepped = false;
  		}
@@ -261,6 +262,43 @@ int main() {
 				OutputVariableValue(&val);
 				bv_variable_deinitialize(&val);
 			}
+		}
+		else if (tokens[0] == "continue") {
+			dbg.Continue();
+			hasStepped = true; // update the view
+		}
+		else if (tokens[0] == "bkpt") {
+			if (tokens.size() > 1) {
+				int line = std::stoi(tokens[1]);
+				dbg.AddBreakpoint(line);
+				hasStepped = true; // update the view
+			}
+		}
+		else if (tokens[0] == "cbkpt") {
+			if (tokens.size() > 1) {
+				int line = std::stoi(tokens[1]);
+				
+				size_t pos = 0;
+				for (size_t i = 0; i < cmd.size(); i++)
+					if (isdigit(cmd[i])) {
+						pos = i;
+						break;
+					}
+				pos = cmd.find_first_of(' ', pos);
+
+				dbg.AddConditionalBreakpoint(line, cmd.substr(pos));
+
+				hasStepped = true; // update the view
+			}
+		}
+		else if (tokens[0] == "rembkpt") {
+			if (tokens.size() > 1) {
+				int line = std::stoi(tokens[1]);
+				dbg.ClearBreakpoint(line);
+			}
+			else
+				dbg.ClearBreakpoints();
+			hasStepped = true;
 		}
 		else if (tokens[0] == "func")
 			printf("%s\n", dbg.GetCurrentFunction().c_str());

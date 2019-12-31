@@ -417,14 +417,38 @@ namespace sd
 				for (u16 i = 0; i < me->type->props.name_count; i++)
 					me->prop[i] = bv_variable_cast(type, args[i]);
 			}
-			else if (count == 2 && size == 4) { // vec4(vec2, vec2)
-				bv_object* vec1 = bv_variable_get_object(args[0]);
-				bv_object* vec2 = bv_variable_get_object(args[1]);
+			else if (count == 2) { 
+				if (size == 4) {
+					bv_object* vec1 = bv_variable_get_object(args[0]);
 
-				me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
-				me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
-				me->prop[2] = bv_variable_cast(type, vec2->prop[0]);
-				me->prop[3] = bv_variable_cast(type, vec2->prop[1]);
+					// vec4(vec2, vec2)
+					if (args[1].type == bv_type_object) {
+						bv_object* vec2 = bv_variable_get_object(args[1]);
+
+						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
+						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
+						me->prop[2] = bv_variable_cast(type, vec2->prop[0]);
+						me->prop[3] = bv_variable_cast(type, vec2->prop[1]);
+					}
+
+					// vec4(vec3, float)
+					else {
+						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
+						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
+						me->prop[2] = bv_variable_cast(type, vec1->prop[2]);
+						me->prop[3] = bv_variable_cast(type, args[1]);
+					}
+				}
+				else if (size == 3) {
+					bv_object* vec1 = bv_variable_get_object(args[0]);
+
+					// vec3(vec2, float)
+					if (args[1].type != bv_type_object) {
+						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
+						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
+						me->prop[2] = bv_variable_cast(type, args[1]);
+					}
+				}
 			}
 
 			return bv_variable_create_void();

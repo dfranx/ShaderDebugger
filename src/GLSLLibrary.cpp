@@ -3923,6 +3923,345 @@ namespace sd
 			return ret;
 		}
 
+		/* integer */
+		bv_variable lib_glsl_bitCount(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitCount(genIType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::bitCount(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+					
+					return ret;
+				}
+				// bitCount(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::bitCount(bv_variable_get_int(args[0])));
+				// bitCount(scalar)
+				else
+					return bv_variable_create_uint(glm::bitCount(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_bitfieldExtract(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldExtract(genIType, int, int) */
+			if (count >= 3) {
+				int offset = bv_variable_get_int(args[1]);
+				int bits = bv_variable_get_int(args[2]);
+
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::bitfieldExtract(sd::AsVector<4, int>(args[0]), offset, bits);
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldExtract(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::bitfieldExtract(bv_variable_get_int(args[0]), offset, bits));
+				// bitfieldExtract(scalar)
+				else
+					return bv_variable_create_uint(glm::bitfieldExtract(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0])), offset, bits));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_bitfieldInsert(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldInsert(genI/UType, genI/UType, int, int) */
+			if (count >= 4) {
+				int offset = bv_variable_get_int(args[1]);
+				int bits = bv_variable_get_int(args[2]);
+
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::ivec4 base = sd::AsVector<4, int>(args[0]);
+					glm::ivec4 insert = sd::AsVector<4, int>(args[1]);
+
+					glm::ivec4 vecData = glm::bitfieldInsert(base, insert, offset, bits);
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldInsert(scalar)
+				else if (args[0].type == bv_type_int) {
+					int base = bv_variable_get_int(args[0]);
+					int insert = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+					return bv_variable_create_int(glm::bitfieldInsert(base, insert, offset, bits));
+				}
+				// bitfieldInsert(scalar)
+				else if (args[0].type == bv_type_int) {
+					unsigned int base = bv_variable_get_uint(args[0]);
+					unsigned int insert = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
+
+					return bv_variable_create_uint(glm::bitfieldInsert(base, insert, offset, bits));
+				}
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_bitfieldReverse(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldReverse(genI/UType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::bitfieldReverse(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldReverse(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::bitfieldReverse(bv_variable_get_int(args[0])));
+				// bitfieldReverse(scalar)
+				else
+					return bv_variable_create_uint(glm::bitfieldReverse(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_findLSB(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldReverse(genI/UType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::findLSB(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldReverse(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::findLSB(bv_variable_get_int(args[0])));
+				// bitfieldReverse(scalar)
+				else
+					return bv_variable_create_uint(glm::findLSB(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_findMSB(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldReverse(genI/UType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::findMSB(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldReverse(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::findMSB(bv_variable_get_int(args[0])));
+				// bitfieldReverse(scalar)
+				else
+					return bv_variable_create_uint(glm::findMSB(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_uaddCarry(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uaddCarry */
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* x = bv_variable_get_object(args[0]);
+					glm::uvec4 xData = sd::AsVector<4, unsigned int>(args[0]);
+					glm::uvec4 yData = sd::AsVector<4, unsigned int>(args[1]);
+
+					glm::uvec4 carry;
+					glm::uvec4 res = glm::uaddCarry(xData, yData, carry);
+
+					bv_variable* outCarry = bv_variable_get_pointer(args[2]);
+					bv_object* outCarryObj = bv_variable_get_object(*outCarry);
+					for (u16 i = 0; i < outCarryObj->type->props.name_count; i++)
+						outCarryObj->prop[i] = bv_variable_create_uint(carry[i]);
+
+					bv_variable ret = create_vec(prog, bv_type_uint, outCarryObj->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uint(res[i]);
+
+					return ret;
+				}
+				else {
+					unsigned int x = bv_variable_get_uint(args[0]);
+					unsigned int y = bv_variable_get_uint(args[1]);
+
+					unsigned int res = 0, carry = 0;
+					res = glm::uaddCarry(x, y, carry);
+
+					bv_variable* outCarry = bv_variable_get_pointer(args[2]);
+					bv_variable_set_uint(outCarry, carry);
+
+					return bv_variable_create_uint(res);
+				}
+			}
+
+			return bv_variable_create_uint(0);
+		}
+		bv_variable lib_glsl_umulExtended(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* umulExtended */
+			if (count >= 4) {
+				if (args[0].type == bv_type_object) {
+					glm::uvec4 xData = sd::AsVector<4, unsigned int>(args[0]);
+					glm::uvec4 yData = sd::AsVector<4, unsigned int>(args[1]);
+
+					glm::uvec4 msb, lsb;
+					glm::umulExtended(xData, yData, msb, lsb);
+
+					bv_variable* outMSB = bv_variable_get_pointer(args[2]);
+					bv_object* outMSBObj = bv_variable_get_object(*outMSB);
+					for (u16 i = 0; i < outMSBObj->type->props.name_count; i++)
+						outMSBObj->prop[i] = bv_variable_create_uint(msb[i]);
+
+					bv_variable* outLSB = bv_variable_get_pointer(args[3]);
+					bv_object* outLSBObj = bv_variable_get_object(*outLSB);
+					for (u16 i = 0; i < outLSBObj->type->props.name_count; i++)
+						outLSBObj->prop[i] = bv_variable_create_uint(lsb[i]);
+				}
+				else {
+					unsigned int x = bv_variable_get_uint(args[0]);
+					unsigned int y = bv_variable_get_uint(args[1]);
+
+					unsigned int msb = 0, lsb = 0;
+					glm::umulExtended(x, y, msb, lsb);
+
+					bv_variable* outMSB = bv_variable_get_pointer(args[2]);
+					bv_variable_set_uint(outMSB, msb);
+
+					bv_variable* outLSB = bv_variable_get_pointer(args[3]);
+					bv_variable_set_uint(outLSB, lsb);
+				}
+			}
+
+			return bv_variable_create_void();
+		}
+		bv_variable lib_glsl_imulExtended(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* imulExtended */
+			if (count >= 4) {
+				if (args[0].type == bv_type_object) {
+					glm::ivec4 xData = sd::AsVector<4, int>(args[0]);
+					glm::ivec4 yData = sd::AsVector<4, int>(args[1]);
+
+					glm::ivec4 msb, lsb;
+					glm::imulExtended(xData, yData, msb, lsb);
+
+					bv_variable* outMSB = bv_variable_get_pointer(args[2]);
+					bv_object* outMSBObj = bv_variable_get_object(*outMSB);
+					for (u16 i = 0; i < outMSBObj->type->props.name_count; i++)
+						outMSBObj->prop[i] = bv_variable_create_int(msb[i]);
+
+					bv_variable* outLSB = bv_variable_get_pointer(args[3]);
+					bv_object* outLSBObj = bv_variable_get_object(*outLSB);
+					for (u16 i = 0; i < outLSBObj->type->props.name_count; i++)
+						outLSBObj->prop[i] = bv_variable_create_int(lsb[i]);
+				}
+				else {
+					int x = bv_variable_get_int(args[0]);
+					int y = bv_variable_get_int(args[1]);
+
+					int msb = 0, lsb = 0;
+					glm::imulExtended(x, y, msb, lsb);
+
+					bv_variable* outMSB = bv_variable_get_pointer(args[2]);
+					bv_variable_set_int(outMSB, msb);
+
+					bv_variable* outLSB = bv_variable_get_pointer(args[3]);
+					bv_variable_set_int(outLSB, lsb);
+				}
+			}
+
+			return bv_variable_create_void();
+		}
+		bv_variable lib_glsl_usubBorrow(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* uaddCarry */
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* x = bv_variable_get_object(args[0]);
+					glm::uvec4 xData = sd::AsVector<4, unsigned int>(args[0]);
+					glm::uvec4 yData = sd::AsVector<4, unsigned int>(args[1]);
+
+					glm::uvec4 borrow;
+					glm::uvec4 res = glm::usubBorrow(xData, yData, borrow);
+
+					bv_variable* outBorrow = bv_variable_get_pointer(args[2]);
+					bv_object* outBorrowObj = bv_variable_get_object(*outBorrow);
+					for (u16 i = 0; i < outBorrowObj->type->props.name_count; i++)
+						outBorrowObj->prop[i] = bv_variable_create_uint(borrow[i]);
+
+					bv_variable ret = create_vec(prog, bv_type_uint, outBorrowObj->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uint(res[i]);
+
+					return ret;
+				}
+				else {
+					unsigned int x = bv_variable_get_uint(args[0]);
+					unsigned int y = bv_variable_get_uint(args[1]);
+
+					unsigned int res = 0, borrow = 0;
+					res = glm::usubBorrow(x, y, borrow);
+
+					bv_variable* outBorrow = bv_variable_get_pointer(args[2]);
+					bv_variable_set_uint(outBorrow, borrow);
+
+					return bv_variable_create_uint(res);
+				}
+			}
+
+			return bv_variable_create_uint(0);
+		}
+
 		/* helper functions to create vector & matrix definitions */
 		bv_object_info* add_vec(bv_library* lib, const char* name, u8 comp, u8 logNot = 0)
 		{
@@ -4150,6 +4489,18 @@ namespace sd
 			bv_library_add_function(lib, "matrixCompMult", lib_glsl_matrixCompMult);
 			bv_library_add_function(lib, "outerProduct", lib_glsl_outerProduct);
 			bv_library_add_function(lib, "transpose", lib_glsl_transpose);
+
+			// integer
+			bv_library_add_function(lib, "bitCount", lib_glsl_bitCount);
+			bv_library_add_function(lib, "bitfieldExtract", lib_glsl_bitfieldExtract);
+			bv_library_add_function(lib, "bitfieldInsert", lib_glsl_bitfieldInsert);
+			bv_library_add_function(lib, "bitfieldReverse", lib_glsl_bitfieldReverse);
+			bv_library_add_function(lib, "findLSB", lib_glsl_findLSB);
+			bv_library_add_function(lib, "findMSB", lib_glsl_findMSB);
+			bv_library_add_function(lib, "uaddCarry", lib_glsl_uaddCarry);
+			bv_library_add_function(lib, "umulExtended", lib_glsl_umulExtended);
+			bv_library_add_function(lib, "imulExtended", lib_glsl_imulExtended);
+			bv_library_add_function(lib, "usubBorrow", lib_glsl_usubBorrow);
 
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);

@@ -1622,5 +1622,11 @@ namespace sd
 		m_builtInFuncsPtrs.clear();
 		m_builtInFuncsPtrs["modf"].push_back(1); // second argument is out
 		m_builtInFuncsPtrs["frexp"].push_back(1); // second argument is out
+		m_builtInFuncsPtrs["uaddCarry"].push_back(2); // third argument is out
+		m_builtInFuncsPtrs["umulExtended"].push_back(2); // third argument is out
+		m_builtInFuncsPtrs["umulExtended"].push_back(3); // fourth argument is out
+		m_builtInFuncsPtrs["imulExtended"].push_back(2); // third argument is out
+		m_builtInFuncsPtrs["imulExtended"].push_back(3); // fourth argument is out
+		m_builtInFuncsPtrs["usubBorrow"].push_back(2); // third argument is out
 	}
 }

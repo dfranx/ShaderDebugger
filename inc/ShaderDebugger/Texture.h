@@ -35,6 +35,7 @@ namespace sd
 		bool Allocate(int w, int h, int d = 1);
 		void Fill(glm::vec4 val);
 		glm::vec4 Sample(float u, float v, float w = 0.0f, float mip = 0.0f);
+		glm::vec4 TexelFetch(int u, int v, int w = 0, int mip = 0);
 
 		// TODO: GenerateMipmaps()
 

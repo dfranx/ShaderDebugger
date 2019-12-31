@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <vector>
 
 namespace sd
 {
@@ -15,8 +16,10 @@ namespace sd
 			TODO: 
 				- dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine
 				- fwidth, fwidthCoarse, fwidthFine
-				- double values & packDouble2x32
+				- interpolateAtCentroid, interpolateAtOffset, interpolateAtSample
+				- double type & (un)packDouble2x32
 				- reimplement noise functions so that they follow the "rules"
+				- geometry and compute shader functions
 		*/
 
 		// helper functions:
@@ -244,6 +247,35 @@ namespace sd
 			ret->Type = mat->Type;
 			ret->Data = mat->Data;
 			return ret;
+		}
+
+		u8 is_basic_texture(const char* name)
+		{
+			static const std::vector<const char*> names = {
+				"isampler1D", "usampler1D", "sampler1D",
+				"isampler2D", "usampler2D", "sampler2D",
+				"isampler3D", "usampler3D", "sampler3D"
+			};
+			for (u16 i = 0; i < names.size(); i++)
+				if (strcmp(names[i], name) == 0)
+					return 1;
+			return 0;
+		}
+		bv_type get_texture_type(const char* name)
+		{
+			static const std::vector<const char*> namesU = {
+				"usampler1D", "usampler2D", "usampler3D"
+			};
+			static const std::vector<const char*> namesI = {
+				"isampler1D", "isampler2D", "isampler3D"
+			};
+			for (u16 i = 0; i < namesU.size(); i++)
+				if (strcmp(namesU[i], name) == 0)
+					return bv_type_uint;
+			for (u16 i = 0; i < namesI.size(); i++)
+				if (strcmp(namesI[i], name) == 0)
+					return bv_type_int;
+			return bv_type_float;
 		}
 
 		/* swizzle */
@@ -3009,27 +3041,195 @@ namespace sd
 			return bv_variable_create_float(0.0f);
 		}
 
-		/* texture() */
+		/* component comparison */
+		bv_variable lib_glsl_all(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bool all(bvec) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			
+			u8 ret = 1;
+
+			for (u8 i = 0; i < x->type->props.name_count; i++)
+				ret &= bv_variable_get_uchar(x->prop[i]);
+
+			return bv_variable_create_uchar(ret);
+		}
+		bv_variable lib_glsl_any(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bool any(bvec) */
+			bv_object* x = bv_variable_get_object(args[0]);
+
+			u8 ret = 0;
+
+			for (u8 i = 0; i < x->type->props.name_count; i++)
+				ret |= bv_variable_get_uchar(x->prop[i]);
+
+			return bv_variable_create_uchar(ret);
+		}
+		bv_variable lib_glsl_greaterThan(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX greaterThan(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_greater_than(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_greaterThanEqual(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX greaterThan(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_greater_equal(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_lessThan(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX lessThan(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_less_than(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_lessThanEqual(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX lessThanEqual(vecX, vecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+			bv_object* y = bv_variable_get_object(args[1]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(bv_variable_op_less_equal(prog, x->prop[i], y->prop[i]));
+
+			return ret;
+		}
+		bv_variable lib_glsl_not(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bvecX greaterThan(bvecX) */
+			bv_object* x = bv_variable_get_object(args[0]);
+
+			u8 vecSize = x->type->props.name_count;
+			bv_variable ret = create_vec(prog, bv_type_uchar, vecSize);
+			bv_object* retObj = bv_variable_get_object(ret);
+
+			for (u8 i = 0; i < vecSize; i++)
+				retObj->prop[i] = bv_variable_create_uchar(!bv_variable_get_uchar(x->prop[i]));
+
+			return ret;
+		}
+
+		/* texture */
+		bv_variable lib_glsl_texelFetch(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 2) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// sampler2D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::ivec3 uv = sd::AsVector<3, int>(args[1]);
+						int lod = 0;
+						if (count >= 3)
+							lod = bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
+
+						glm::vec4 sample = tex->TexelFetch(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(type));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(type));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_texelFetchOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 4) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// sampler2D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::ivec3 uv = sd::AsVector<3, int>(args[1]);
+						int lod = bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
+						int offset = bv_variable_get_int(bv_variable_cast(bv_type_int, args[3]));
+
+						glm::vec4 sample = tex->TexelFetch(uv.x + offset, uv.y + offset * (tex->Height > 1), uv.z + offset * (tex->Depth > 1), lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(type));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(type));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
 		bv_variable lib_glsl_texture(bv_program* prog, u8 count, bv_variable* args)
 		{
 			if (count >= 2) {
 				float bias = 0.0f;
 				if (args[0].type == bv_type_object) { // floor(vec3), ...
-					bv_object* smp2D = bv_variable_get_object(args[0]);
+					bv_object* sampler = bv_variable_get_object(args[0]);
 
 					// sampler2D
-					if (strcmp(smp2D->type->name, "sampler2D") == 0) {
-						Texture* tex = (Texture*)smp2D->user_data;
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
 						glm::vec2 uv = sd::AsVector<2, float>(args[1]); // TODO: vec2
 
 						glm::vec4 sample = tex->Sample(uv.x, uv.y, 0.0f, 0.0f + bias);
-						return create_vec4(prog, glm::vec4(sample)); // TODO: CreateVec4
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(type));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(type));
+
+						return create_vec4(prog, sample);
 					}
-					/* else if samplerCube, isampler2D ... */
+					/* else if samplerCube ... */
 				}
 			}
-			
-			return bv_variable_create_float(0.0f); // floor() must have 1 argument!
+
+			return create_vec4(prog);
 		}
 
 
@@ -3221,6 +3421,20 @@ namespace sd
 			bv_library_add_function(lib, "notEqual", lib_glsl_notEqual);
 			bv_library_add_function(lib, "reflect", lib_glsl_reflect);
 			bv_library_add_function(lib, "refract", lib_glsl_refract);
+
+			// component comparison
+			bv_library_add_function(lib, "all", lib_glsl_all);
+			bv_library_add_function(lib, "any", lib_glsl_any);
+			bv_library_add_function(lib, "greaterThan", lib_glsl_greaterThan);
+			bv_library_add_function(lib, "greaterThanEqual", lib_glsl_greaterThanEqual);
+			bv_library_add_function(lib, "lessThan", lib_glsl_lessThan);
+			bv_library_add_function(lib, "lessThanEqual", lib_glsl_lessThanEqual);
+			bv_library_add_function(lib, "not", lib_glsl_not);
+
+			// texture
+			bv_library_add_function(lib, "texelFetch", lib_glsl_texelFetch);
+			bv_library_add_function(lib, "texelFetchOffset", lib_glsl_texelFetchOffset);
+			bv_library_add_function(lib, "texture", lib_glsl_texture);
 
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);

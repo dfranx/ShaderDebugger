@@ -70,6 +70,23 @@ namespace sd
 
 		return glm::vec4(mem[0], mem[1], mem[2], mem[3]);
 	}
+	glm::vec4 Texture::TexelFetch(int u, int v, int w, int mip)
+	{
+		if (m_isInvalid())
+			return glm::vec4(1.0f);
+		
+		// clamp (TODO: wrap)
+		u = std::min(Width, std::max(0, w));
+		v = std::min(Height, std::max(0, v));
+		w = std::min(Depth, std::max(0, w));
+
+		// clamp mipmap level
+		mip = std::min(MipmapLevels, std::max(0, mip));
+
+		float* mem = &Data[mip][(u + Width * (v + Depth * w)) * 4];
+
+		return glm::vec4(mem[0], mem[1], mem[2], mem[3]);
+	}
 	void Texture::m_cleanup()
 	{
 		if (Data != nullptr) {

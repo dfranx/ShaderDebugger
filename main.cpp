@@ -264,7 +264,8 @@ int main() {
 			}
 		}
 		else if (tokens[0] == "continue") {
-			dbg.Continue();
+			bool res = dbg.Continue();
+			if (!res) break;
 			hasStepped = true; // update the view
 		}
 		else if (tokens[0] == "bkpt") {

@@ -159,12 +159,13 @@ namespace sd
 				return true;
 		return false;
 	}
-	void ShaderDebugger::Continue()
+	bool ShaderDebugger::Continue()
 	{
 		while (Step()) {
 			if (m_checkBreakpoint(GetCurrentLine()))
-				break;
-		}
+				return true;
+		};
+		return false;
 	}
 	bool ShaderDebugger::m_checkBreakpoint(int line)
 	{
@@ -290,6 +291,9 @@ namespace sd
 			bv_program* immProg = bv_program_create(bytecode.data());
 			if (immProg == nullptr)
 				return bv_variable_create_void(); // invalid bytecode
+
+			// property getter
+			immProg->property_getter = m_immTransl->PropertyGetter;
 
 			// copy libraries
 			bv_program_add_library(immProg, m_library);

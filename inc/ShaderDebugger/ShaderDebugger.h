@@ -79,7 +79,7 @@ namespace sd
 		bv_variable* GetLocalValue(const std::string& varname);
 		int GetCurrentLine() { return m_prog->current_line; }
 		void Jump(int line);
-		void Continue();
+		bool Continue();
 		bool Step();
 		bool StepOver();
 		bool StepOut();

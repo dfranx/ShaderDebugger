@@ -9,5 +9,5 @@ void main()
 	for (int i = 0; i < 5; i++) 
 		val *= 0.5f;
 		
-	outColor = vec4(val, smp.xyz);
+	outColor = vec4(smp.xyz, val);
 }

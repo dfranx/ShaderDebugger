@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <vector>
+#include <string>
 
 namespace sd
 {
@@ -3786,6 +3787,141 @@ namespace sd
 			return create_ivec2(prog);
 		}
 
+		/* matrix */
+		bv_variable lib_glsl_determinant(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_float(0.0f);
+
+			if (count >= 1) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* mat = bv_variable_get_object(args[0]);
+					sd::Matrix* matData = (sd::Matrix*)mat->user_data;
+
+					if (matData->Rows == 2)
+						bv_variable_set_float(&ret, glm::determinant(glm::mat2(matData->Data)));
+					else if (matData->Rows == 3)
+						bv_variable_set_float(&ret, glm::determinant(glm::mat3(matData->Data)));
+					else
+						bv_variable_set_float(&ret, glm::determinant(matData->Data));
+				}
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_inverse(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+
+			if (count >= 1) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* mat = bv_variable_get_object(args[0]);
+					sd::Matrix* matData = (sd::Matrix*)mat->user_data;
+
+					sd::Matrix* copyData = copy_mat_data(matData);
+
+					if (matData->Rows == 2)
+						copyData->Data = glm::inverse(glm::mat2(matData->Data));
+					else if (matData->Rows == 3)
+						copyData->Data = glm::inverse(glm::mat3(matData->Data));
+					else
+						copyData->Data = glm::inverse(matData->Data);
+
+					return create_mat(prog, mat->type->name, copyData);
+				}
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_matrixCompMult(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+
+			if (count >= 2) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* x = bv_variable_get_object(args[0]);
+					sd::Matrix* xData = (sd::Matrix*)x->user_data;
+
+					bv_object* y = bv_variable_get_object(args[1]);
+					sd::Matrix* yData = (sd::Matrix*)y->user_data;
+
+					sd::Matrix* copyData = copy_mat_data(xData);
+
+					for (int x = 0; x < xData->Columns; x++) 
+						for (int y = 0; y < xData->Rows; y++)
+							copyData->Data[x][y] = yData->Data[x][y] * xData->Data[x][y];
+
+					return create_mat(prog, x->type->name, copyData);
+				}
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_outerProduct(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+
+			if (count >= 2) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* x = bv_variable_get_object(args[0]);
+					bv_object* y = bv_variable_get_object(args[1]);
+
+					glm::vec4 xData = sd::AsVector<4, float>(args[0]);
+					glm::vec4 yData = sd::AsVector<4, float>(args[1]);
+
+					glm::mat4 resDat = glm::outerProduct(xData, yData);
+					int resCols = y->type->props.name_count;
+					int resRows = x->type->props.name_count;
+
+					bool isDouble = x->type->name[0] == 'd';
+
+					std::string newName = "mat" + std::to_string(resCols);
+					if (resCols != resRows)
+						newName += "x" + std::to_string(resRows);
+					if (isDouble)
+						newName = "d" + newName;
+
+					sd::Matrix* res = new sd::Matrix();
+					res->Columns = resCols;
+					res->Rows = resRows;
+					res->Data = resDat;
+					res->Type = bv_type_float;
+
+					return create_mat(prog, newName.c_str(), res);
+				}
+			}
+
+			return ret;
+		}
+		bv_variable lib_glsl_transpose(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bv_variable ret = bv_variable_create_void();
+
+			if (count >= 1) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* mat = bv_variable_get_object(args[0]);
+					sd::Matrix* matData = (sd::Matrix*)mat->user_data;
+
+					sd::Matrix* copyData = copy_mat_data(matData);
+
+					copyData->Columns = matData->Rows;
+					copyData->Rows = matData->Columns;
+					
+					copyData->Data = glm::transpose(matData->Data);
+
+					bool isDouble = mat->type->name[0] == 'd';
+
+					std::string newName = "mat" + std::to_string(copyData->Columns);
+					if (copyData->Rows != copyData->Columns)
+						newName += "x" + std::to_string(copyData->Rows);
+					if (isDouble)
+						newName = "d" + newName;
+
+					return create_mat(prog, newName.c_str(), copyData);
+				}
+			}
+
+			return ret;
+		}
 
 		/* helper functions to create vector & matrix definitions */
 		bv_object_info* add_vec(bv_library* lib, const char* name, u8 comp, u8 logNot = 0)
@@ -4007,6 +4143,13 @@ namespace sd
 			bv_library_add_function(lib, "textureQueryLod", lib_glsl_textureQueryLod);
 			bv_library_add_function(lib, "textureSamples", lib_glsl_textureSamples);
 			bv_library_add_function(lib, "textureSize", lib_glsl_textureSize);
+
+			// matrix
+			bv_library_add_function(lib, "determinant", lib_glsl_determinant);
+			bv_library_add_function(lib, "inverse", lib_glsl_inverse);
+			bv_library_add_function(lib, "matrixCompMult", lib_glsl_matrixCompMult);
+			bv_library_add_function(lib, "outerProduct", lib_glsl_outerProduct);
+			bv_library_add_function(lib, "transpose", lib_glsl_transpose);
 
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);

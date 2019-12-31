@@ -16,10 +16,11 @@ namespace sd
 			TODO: 
 				- dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine
 				- fwidth, fwidthCoarse, fwidthFine
-				- interpolateAtCentroid, interpolateAtOffset, interpolateAtSample
+				- interpolateAtCentroid, interpolateAtOffset, interpolateAtSample, textureGatherOffsets, textureGrad, textureGradOffset, textureProjGrad, textureProjGradOffset, textureQueryLod, textureSamples
 				- double type & (un)packDouble2x32
+				- LOD calculation, or have a ShaderDebugger::LOD which the user can set?
 				- reimplement noise functions so that they follow the "rules"
-				- geometry and compute shader functions
+				- geometry and compute (image, atomic, memory barriers) shader functions
 		*/
 
 		// helper functions:
@@ -276,6 +277,18 @@ namespace sd
 				if (strcmp(namesI[i], name) == 0)
 					return bv_type_int;
 			return bv_type_float;
+		}
+		u8 get_texture_dimension(const char* name)
+		{
+			static const std::vector<const char*> names = {
+				"isampler1D", "usampler1D", "sampler1D",
+				"isampler2D", "usampler2D", "sampler2D",
+				"isampler3D", "usampler3D", "sampler3D"
+			};
+			for (u16 i = 0; i < names.size(); i++)
+				if (strcmp(names[i], name) == 0)
+					return i/3 + 1;
+			return 0;
 		}
 
 		/* swizzle */
@@ -3149,7 +3162,7 @@ namespace sd
 				if (args[0].type == bv_type_object) { // floor(vec3), ...
 					bv_object* sampler = bv_variable_get_object(args[0]);
 
-					// sampler2D
+					// sampler1D/2D/3D
 					if (is_basic_texture(sampler->type->name)) {
 						Texture* tex = (Texture*)sampler->user_data;
 						glm::ivec3 uv = sd::AsVector<3, int>(args[1]);
@@ -3161,9 +3174,9 @@ namespace sd
 						bv_type type = get_texture_type(sampler->type->name);
 
 						if (type == bv_type_int)
-							return create_ivec4(prog, glm::ivec4(type));
+							return create_ivec4(prog, glm::ivec4(sample));
 						else if (type == bv_type_uint)
-							return create_uvec4(prog, glm::uvec4(type));
+							return create_uvec4(prog, glm::uvec4(sample));
 
 						return create_vec4(prog, sample);
 					}
@@ -3180,7 +3193,7 @@ namespace sd
 				if (args[0].type == bv_type_object) { // floor(vec3), ...
 					bv_object* sampler = bv_variable_get_object(args[0]);
 
-					// sampler2D
+					// sampler1D/2D/3D
 					if (is_basic_texture(sampler->type->name)) {
 						Texture* tex = (Texture*)sampler->user_data;
 						glm::ivec3 uv = sd::AsVector<3, int>(args[1]);
@@ -3191,9 +3204,9 @@ namespace sd
 						bv_type type = get_texture_type(sampler->type->name);
 
 						if (type == bv_type_int)
-							return create_ivec4(prog, glm::ivec4(type));
+							return create_ivec4(prog, glm::ivec4(sample));
 						else if (type == bv_type_uint)
-							return create_uvec4(prog, glm::uvec4(type));
+							return create_uvec4(prog, glm::uvec4(sample));
 
 						return create_vec4(prog, sample);
 					}
@@ -3206,22 +3219,28 @@ namespace sd
 		bv_variable lib_glsl_texture(bv_program* prog, u8 count, bv_variable* args)
 		{
 			if (count >= 2) {
-				float bias = 0.0f;
 				if (args[0].type == bv_type_object) { // floor(vec3), ...
 					bv_object* sampler = bv_variable_get_object(args[0]);
 
-					// sampler2D
+					// gsampler1D/2D/3D
 					if (is_basic_texture(sampler->type->name)) {
 						Texture* tex = (Texture*)sampler->user_data;
-						glm::vec2 uv = sd::AsVector<2, float>(args[1]); // TODO: vec2
+						glm::vec3 uv = sd::AsVector<3, float>(args[1]);
 
-						glm::vec4 sample = tex->Sample(uv.x, uv.y, 0.0f, 0.0f + bias);
+						float lod = 0.0f; // TODO: LOD calculation ?
+
+						float bias = 0.0f;
+						if (count >= 3)
+							bias = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+						lod+=floor(bias);
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
 						bv_type type = get_texture_type(sampler->type->name);
 
 						if (type == bv_type_int)
-							return create_ivec4(prog, glm::ivec4(type));
+							return create_ivec4(prog, glm::ivec4(sample));
 						else if (type == bv_type_uint)
-							return create_uvec4(prog, glm::uvec4(type));
+							return create_uvec4(prog, glm::uvec4(sample));
 
 						return create_vec4(prog, sample);
 					}
@@ -3230,6 +3249,541 @@ namespace sd
 			}
 
 			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureGather(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 2) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler2D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec2 uv = sd::AsVector<2, float>(args[1]);
+
+						int comp = 0;
+						if (count >= 3)
+							comp = bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+
+						// TODO: LOD calculation
+
+						glm::vec4 sample_i0_j1 = tex->Sample(uv.x, uv.y + yPixel, 0.0f, 0.0f);
+						glm::vec4 sample_i1_j1 = tex->Sample(uv.x + xPixel, uv.y + yPixel, 0.0f, 0.0f);
+						glm::vec4 sample_i1_j0 = tex->Sample(uv.x + xPixel, uv.y, 0.0f, 0.0f);
+						glm::vec4 sample_i0_j0 = tex->Sample(uv.x, uv.y, 0.0f, 0.0f);
+
+						glm::vec4 sample(0.0f);
+
+						if (comp == 1)
+							sample = glm::vec4(sample_i0_j1.y, sample_i1_j1.y, sample_i1_j0.y, sample_i0_j0.y);
+						else if (comp == 2)
+							sample = glm::vec4(sample_i0_j1.z, sample_i1_j1.z, sample_i1_j0.z, sample_i0_j0.z);
+						else if (comp == 3)
+							sample = glm::vec4(sample_i0_j1.w, sample_i1_j1.w, sample_i1_j0.w, sample_i0_j0.w);
+						else
+							sample = glm::vec4(sample_i0_j1.x, sample_i1_j1.x, sample_i1_j0.x, sample_i0_j0.x);
+
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureGatherOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler2D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec2 uv = sd::AsVector<2, float>(args[1]);
+						glm::ivec2 offset = sd::AsVector<2, int>(args[2]);
+
+						int comp = 0;
+						if (count >= 4)
+							comp = bv_variable_get_int(bv_variable_cast(bv_type_int, args[3]));
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+
+						uv.x += offset.x * xPixel; // ?
+						uv.y += offset.y * yPixel; // ?
+
+						glm::vec4 sample_i0_j1 = tex->Sample(uv.x, uv.y + yPixel, 0.0f, 0.0f);
+						glm::vec4 sample_i1_j1 = tex->Sample(uv.x + xPixel, uv.y + yPixel, 0.0f, 0.0f);
+						glm::vec4 sample_i1_j0 = tex->Sample(uv.x + xPixel, uv.y, 0.0f, 0.0f);
+						glm::vec4 sample_i0_j0 = tex->Sample(uv.x, uv.y, 0.0f, 0.0f);
+
+						glm::vec4 sample(0.0f);
+
+						if (comp == 1)
+							sample = glm::vec4(sample_i0_j1.y, sample_i1_j1.y, sample_i1_j0.y, sample_i0_j0.y);
+						else if (comp == 2)
+							sample = glm::vec4(sample_i0_j1.z, sample_i1_j1.z, sample_i1_j0.z, sample_i0_j0.z);
+						else if (comp == 3)
+							sample = glm::vec4(sample_i0_j1.w, sample_i1_j1.w, sample_i1_j0.w, sample_i0_j0.w);
+						else
+							sample = glm::vec4(sample_i0_j1.x, sample_i1_j1.x, sample_i1_j0.x, sample_i0_j0.x);
+
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureGatherOffsets(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			if (count >= 1) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) {
+					bv_object* sampler = bv_variable_get_object(args[0]);
+					create_vec(prog, get_texture_type(sampler->type->name), 4);
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureGrad(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			if (count >= 1) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) {
+					bv_object* sampler = bv_variable_get_object(args[0]);
+					create_vec(prog, get_texture_type(sampler->type->name), 4);
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureGradOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			if (count >= 1) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) {
+					bv_object* sampler = bv_variable_get_object(args[0]);
+					create_vec(prog, get_texture_type(sampler->type->name), 4);
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureLod(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec3 uv = sd::AsVector<3, float>(args[1]);
+
+						float lod = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureLodOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 4) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec3 uv = sd::AsVector<3, float>(args[1]);
+						float lod = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+						glm::ivec3 offset = sd::AsVector<3, int>(args[3]);
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+						float zPixel = 1.0f / tex->Depth;
+
+						uv.x += offset.x * xPixel;
+						if (tex->Height > 1)
+							uv.y += offset.y * yPixel;
+						if (tex->Depth > 1)
+							uv.z += offset.z * zPixel;
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec3 uv = sd::AsVector<3, float>(args[1]);
+						glm::ivec3 offset = sd::AsVector<3, int>(args[2]);
+
+						float lod = 0.0f; // TODO: LOD calculation ?
+
+						float bias = 0.0f;
+						if (count >= 3)
+							bias = bv_variable_get_float(bv_variable_cast(bv_type_float, args[3]));
+						lod += floor(bias);
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+						float zPixel = 1.0f / tex->Depth;
+
+						uv.x += offset.x * xPixel;
+						if (tex->Height > 1)
+							uv.y += offset.y * yPixel;
+						if (tex->Depth > 1)
+							uv.z += offset.z * zPixel;
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProj(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 2) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec4 uv = sd::AsVector<4, float>(args[1]);
+
+						float lod = 0.0f; // TODO: LOD calculation ?
+
+						float bias = 0.0f;
+						if (count >= 3)
+							bias = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+						lod += floor(bias);
+
+						u16 vecSize = bv_variable_get_object(args[1])->type->props.name_count;
+						if (vecSize == 2)
+							uv.x /= uv.y;
+						else if (vecSize == 3) {
+							uv.x /= uv.z;
+							uv.y /= uv.z;
+						}
+						else if (vecSize == 4) {
+							uv.x /= uv.w;
+							uv.y /= uv.w;
+							uv.z /= uv.w;
+						}
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProjGrad(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			if (count >= 1) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) {
+					bv_object* sampler = bv_variable_get_object(args[0]);
+					create_vec(prog, get_texture_type(sampler->type->name), 4);
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProjGradOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			if (count >= 1) {
+				float bias = 0.0f;
+				if (args[0].type == bv_type_object) {
+					bv_object* sampler = bv_variable_get_object(args[0]);
+					create_vec(prog, get_texture_type(sampler->type->name), 4);
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProjLod(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec4 uv = sd::AsVector<4, float>(args[1]);
+
+						float lod = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+						
+						u16 vecSize = bv_variable_get_object(args[1])->type->props.name_count;
+						if (vecSize == 2)
+							uv.x /= uv.y;
+						else if (vecSize == 3) {
+							uv.x /= uv.z;
+							uv.y /= uv.z;
+						}
+						else if (vecSize == 4) {
+							uv.x /= uv.w;
+							uv.y /= uv.w;
+							uv.z /= uv.w;
+						}
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProjLodOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 4) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec4 uv = sd::AsVector<4, float>(args[1]);
+						glm::ivec3 offset = sd::AsVector<4, int>(args[3]);
+
+						float lod = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+						float zPixel = 1.0f / tex->Depth;
+
+						uv.x += offset.x * xPixel;
+						if (tex->Height > 1)
+							uv.y += offset.y * yPixel;
+						if (tex->Depth > 1)
+							uv.z += offset.z * zPixel;
+
+						u16 vecSize = bv_variable_get_object(args[1])->type->props.name_count;
+						if (vecSize == 2)
+							uv.x /= uv.y;
+						else if (vecSize == 3) {
+							uv.x /= uv.z;
+							uv.y /= uv.z;
+						}
+						else if (vecSize == 4) {
+							uv.x /= uv.w;
+							uv.y /= uv.w;
+							uv.z /= uv.w;
+						}
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureProjOffset(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						glm::vec4 uv = sd::AsVector<4, float>(args[1]);
+						glm::ivec3 offset = sd::AsVector<3, int>(args[2]);
+
+						float lod = 0.0f; // TODO: LOD calculation ?
+
+						float bias = 0.0f;
+						if (count >= 4)
+							bias = bv_variable_get_float(bv_variable_cast(bv_type_float, args[3]));
+						lod += floor(bias);
+
+						float xPixel = 1.0f / tex->Width;
+						float yPixel = 1.0f / tex->Height;
+						float zPixel = 1.0f / tex->Depth;
+
+						uv.x += offset.x * xPixel;
+						if (tex->Height > 1)
+							uv.y += offset.y * yPixel;
+						if (tex->Depth > 1)
+							uv.z += offset.z * zPixel;
+
+						u16 vecSize = bv_variable_get_object(args[1])->type->props.name_count;
+						if (vecSize == 2)
+							uv.x /= uv.y;
+						else if (vecSize == 3) {
+							uv.x /= uv.z;
+							uv.y /= uv.z;
+						}
+						else if (vecSize == 4) {
+							uv.x /= uv.w;
+							uv.y /= uv.w;
+							uv.z /= uv.w;
+						}
+
+						glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+						bv_type type = get_texture_type(sampler->type->name);
+
+						if (type == bv_type_int)
+							return create_ivec4(prog, glm::ivec4(sample));
+						else if (type == bv_type_uint)
+							return create_uvec4(prog, glm::uvec4(sample));
+
+						return create_vec4(prog, sample);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_vec4(prog);
+		}
+		bv_variable lib_glsl_textureQueryLevels(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 1) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						return bv_variable_create_int(tex->MipmapLevels);
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_glsl_textureQueryLod(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			return create_vec2(prog);
+		}
+		bv_variable lib_glsl_textureSamples(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* TODO */
+			return bv_variable_create_int(1);
+		}
+		bv_variable lib_glsl_textureSize(bv_program* prog, u8 count, bv_variable* args)
+		{
+			if (count >= 2) {
+				if (args[0].type == bv_type_object) { // floor(vec3), ...
+					bv_object* sampler = bv_variable_get_object(args[0]);
+
+					// gsampler1D/2D/3D
+					if (is_basic_texture(sampler->type->name)) {
+						Texture* tex = (Texture*)sampler->user_data;
+						float lod = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+						// TODO: take LOD into account
+
+						if (get_texture_dimension(sampler->type->name) == 1)
+							return bv_variable_create_int(tex->Width);
+						else if (get_texture_dimension(sampler->type->name) == 3)
+							return create_ivec3(prog, glm::ivec3(tex->Width, tex->Height, tex->Depth));
+						else
+							return create_ivec2(prog, glm::ivec2(tex->Width, tex->Height));
+					}
+					/* else if samplerCube ... */
+				}
+			}
+
+			return create_ivec2(prog);
 		}
 
 
@@ -3435,6 +3989,24 @@ namespace sd
 			bv_library_add_function(lib, "texelFetch", lib_glsl_texelFetch);
 			bv_library_add_function(lib, "texelFetchOffset", lib_glsl_texelFetchOffset);
 			bv_library_add_function(lib, "texture", lib_glsl_texture);
+			bv_library_add_function(lib, "textureGather", lib_glsl_textureGather);
+			bv_library_add_function(lib, "textureGatherOffset", lib_glsl_textureGatherOffset);
+			bv_library_add_function(lib, "textureGatherOffsets", lib_glsl_textureGatherOffsets);
+			bv_library_add_function(lib, "textureGrad", lib_glsl_textureGrad);
+			bv_library_add_function(lib, "textureGradOffset", lib_glsl_textureGradOffset);
+			bv_library_add_function(lib, "textureLod", lib_glsl_textureLod);
+			bv_library_add_function(lib, "textureLod", lib_glsl_textureLodOffset);
+			bv_library_add_function(lib, "textureOffset", lib_glsl_textureOffset);
+			bv_library_add_function(lib, "textureProj", lib_glsl_textureProj);
+			bv_library_add_function(lib, "textureProjGrad", lib_glsl_textureProjGrad);
+			bv_library_add_function(lib, "textureProjGradOffset", lib_glsl_textureProjGradOffset);
+			bv_library_add_function(lib, "textureProjLod", lib_glsl_textureProjLod);
+			bv_library_add_function(lib, "textureProjLodOffset", lib_glsl_textureProjLodOffset);
+			bv_library_add_function(lib, "textureProjOffset", lib_glsl_textureProjOffset);
+			bv_library_add_function(lib, "textureQueryLevels", lib_glsl_textureQueryLevels);
+			bv_library_add_function(lib, "textureQueryLod", lib_glsl_textureQueryLod);
+			bv_library_add_function(lib, "textureSamples", lib_glsl_textureSamples);
+			bv_library_add_function(lib, "textureSize", lib_glsl_textureSize);
 
 			// texture()
 			bv_library_add_function(lib, "texture", lib_glsl_texture);

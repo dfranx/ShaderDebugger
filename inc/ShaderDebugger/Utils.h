@@ -31,6 +31,14 @@ namespace sd
 				for (u16 i = 0; i < obj->type->props.name_count; i++)
 					ret[i] = bv_variable_get_float(obj->prop[i]);
 		}
+		else if (var.type == bv_type_int)
+			ret[0] = bv_variable_get_int(var);
+		else if (var.type == bv_type_uint)
+			ret[0] = bv_variable_get_uint(var);
+		else if (var.type == bv_type_uchar)
+			ret[0] = bv_variable_get_uchar(var);
+		else if (var.type == bv_type_float)
+			ret[0] = bv_variable_get_float(var);
 
 		return ret;
 	}

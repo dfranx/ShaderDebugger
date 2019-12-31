@@ -226,18 +226,17 @@ int main() {
 			break;
 		else if (tokens[0] == "step") {
 			bool ret = dbg.Step();
-			if (!ret) {
-				printf("Finished debugging!\n");
-				break;
-			}
+			if (!ret) break;
 			hasStepped = true;
 		}
 		else if (tokens[0] == "stepover") {
 			bool ret = dbg.StepOver();
-			if (!ret) {
-				printf("Finished debugging!\n");
-				break;
-			}
+			if (!ret) break;
+			hasStepped = true;
+		}
+		else if (tokens[0] == "stepout") {
+			bool ret = dbg.StepOut();
+			if (!ret) break;
 			hasStepped = true;
 		}
 		else if (tokens[0] == "jump") {
@@ -260,6 +259,7 @@ int main() {
 			if (tokens.size() > 1) {
 				bv_variable val = dbg.Immediate(cmd.substr(4));
 				OutputVariableValue(&val);
+				bv_variable_deinitialize(&val);
 			}
 		}
 		else if (tokens[0] == "func")
@@ -275,6 +275,7 @@ int main() {
 		}
 	}
 
+	printf("Finished debugging!\n");
 	printf("Discarded: %d\n", (int)dbg.IsDiscarded());
 
 	printf("Output:\n");

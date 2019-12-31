@@ -2,17 +2,16 @@
 
 GLSL BlueVM implementation:
 - breakpoints (& conditional breakpoints -> dbg.AddBreakpoint(line, "a == 2.1f") -> compile as bool bkpt() { return condition; } -> all variables global -> copy values from the main shader )
-- Immediate(command) -> example: dbg.Immediate("a.x * 2.0f");
 - StepOut() & Continue()
-- #define & #version
+
 - rename Library::GLSL() & Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle(), rename lib_glsl_* -> lib_*
 - move DiscardFunction to libGLSL
-
 - test params with 'out' keyword 
 - test arrays
 - test variables with no initial value
 - HLSL compiler
 
+- [FUTURE] #define & #version
 - [FUTURE] dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine, fwidth, fwidthCoarse, fwidthFine
 - [FUTURE] reimplement noise functions
 - [FUTURE] mat4 m; m[0].x = 1.0f;

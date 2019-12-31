@@ -176,9 +176,23 @@ namespace sd
 		bool done = Step();
 		updatedFStack = GetFunctionStack();
 
-		while (updatedFStack.size() > fstack.size()) {
+		while (updatedFStack.size() > fstack.size() && done) {
 			done = Step();
 			updatedFStack = GetFunctionStack();
+		}
+
+		return done;
+	}
+	bool ShaderDebugger::StepOut()
+	{
+		std::string fcur = GetCurrentFunction(), updatedFunc;
+
+		bool done = Step();
+		updatedFunc = GetCurrentFunction();
+
+		while (updatedFunc == fcur && done) {
+			done = Step();
+			updatedFunc = GetCurrentFunction();
 		}
 
 		return done;

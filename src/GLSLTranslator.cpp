@@ -186,7 +186,7 @@ namespace sd
 					// TODO: save other layout qualifiers too
 					if (strcmp(qualifier->name, "location") == 0)
 						var.InputSlot = ((glsl::astIntConstant*)qualifier->initialValue)->value;
-					printf("[DEBUG] Setting layout qualifier...\n");
+					// printf("[DEBUG] Setting layout qualifier...\n");
 				}
 			}
 		}
@@ -425,7 +425,7 @@ namespace sd
 			}
 		} else {
 			// TODO: push new object
-			printf("[DEBUG] Calling %s constructor...\n", ((glsl::astStruct*)expression->type)->name);
+			// printf("[DEBUG] Calling %s constructor...\n", ((glsl::astStruct*)expression->type)->name);
 			m_gen.Function.NewObjectByName(((glsl::astStruct*)expression->type)->name, expression->parameters.size());
 		}
 	}
@@ -462,7 +462,7 @@ namespace sd
 				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 			}
 
-			printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
+			// printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
 		}
 		else {
 			std::string structName = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
@@ -473,7 +473,7 @@ namespace sd
 					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 				}
 
-				printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
+				// printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
 			}
 		}
 	}
@@ -601,10 +601,10 @@ namespace sd
 		for (int i = 0; i < paramTypes.size(); i++)
 			paramTypes[i] = evaluateExpressionType(params[i]);
 
-		printf("[DEBUG] Trying to find a match with: ");
-		for (int i = 0; i < paramTypes.size(); i++)
-			printf("%s, ", paramTypes[i].Name.c_str());
-		printf("\n");
+		//printf("[DEBUG] Trying to find a match with: ");
+		//for (int i = 0; i < paramTypes.size(); i++)
+		//	printf("%s, ", paramTypes[i].Name.c_str());
+		//printf("\n");
 
 		for (int i = 0; i < m_func.size(); i++) {
 			if (m_func[i].Name == name) {
@@ -634,7 +634,7 @@ namespace sd
 				}
 			}
 		}
-		printf("[DEBUG] Best match: %d\n",  match_args);
+		//printf("[DEBUG] Best match: %d\n",  match_args);
 		return ret;
 	}
 
@@ -1264,7 +1264,7 @@ namespace sd
 		// m_gen.Function.ScopeStart(); // TODO: it doesn't work with these?
 		m_exportLine(statement);
 		
-		printf("[DEBUG] Entering compoung statement!\n");
+		//printf("[DEBUG] Entering compoung statement!\n");
 
 		for (size_t i = 0; i < statement->statements.size(); i++)
 			translateStatement(statement->statements[i]);

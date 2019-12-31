@@ -80,6 +80,7 @@ namespace sd
 		void Jump(int line);
 		bool Step();
 		bool StepOver();
+		bool StepOut();
 		bv_variable Immediate(const std::string& command);
 
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)

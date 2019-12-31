@@ -46,13 +46,22 @@ return 0;
 Or execute line by line:
 ```c++
 while (vs.Step()) {
-    // get various info using these functions: GetCurrentFunction, GetFunctionStack, GetVariableValue, etc...
+    // get various info using these functions: GetCurrentFunction, GetFunctionStack, GetValue, GetLocalValue, etc...
 }
 // if you want to get return value:
 //    bv_variable ret = vs.GetReturnValue();
 //    ...
 //    bv_variable_deinitialize(&ret);
 ```
+
+You can also execute code on the fly using the `ShaderDebugger::Immediate`:
+```c++
+bv_variable result = dbg.Immediate("sin(a * 2.0f) + texture(tex, uv).x");
+// ...
+bv_variable_deinitialize(&result);
+```
+
+List of other cool functions: `StepOver()`, `StepOut()`, `Continue()`, `Jump()`, `AddBreakpoint()`, `AddConditionalBreakpoint()`
 
 ## Limitations
 List of things that currently don't work but I plan to fix them:

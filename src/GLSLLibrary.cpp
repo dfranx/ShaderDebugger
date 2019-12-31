@@ -310,7 +310,7 @@ namespace sd
 						name[j][0] = xyzw[i];
 				}
 
-			printf("[DEBUG] swizzle: %s\n", field);
+			// printf("[DEBUG] swizzle: %s\n", field);
 
 			if (strlen(field) == 1)
 				return bv_variable_create_pointer(bv_object_get_property(obj, name[0]));

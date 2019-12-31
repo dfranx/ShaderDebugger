@@ -3,6 +3,11 @@
 #include <string.h>
 
 #undef KEYWORD
+#define KEYWORD(X) glsl::kKeyword_##X,
+static int kTypeValues[] = {
+	#include <glsl-parser/lexemes.h>
+};
+#undef KEYWORD
 #define KEYWORD(X) #X,
 static const char *kTypes[] = {
 	#include <glsl-parser/lexemes.h>
@@ -12,6 +17,10 @@ namespace sd
 {
 	bool GLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
+		if (!m_isImmediate)
+			ClearDefinitions();
+		m_gen.Reset();
+
 		PropertyGetter = Library::GLSLswizzle;
 		m_lastLineSaved = -1;
 		m_isSet = false;
@@ -29,14 +38,42 @@ namespace sd
 		if (type == ShaderType::Pixel)
 			shaderType = glsl::astTU::kFragment;
 
-        glsl::parser p(source.c_str(), "memory");
-        glsl::astTU *tu = p.parse(shaderType);
+		std::string actualSource = source;
+		if (m_isImmediate)
+			actualSource = "void immediate() { return " + source + "; }"; // the return type doesn't matter here :P
+
+        glsl::parser p(actualSource.c_str(), "memory");
+
+		for (const auto& glob : m_immGlobals)
+			p.addGlobal(glob.first.c_str(), glob.second.first, glob.second.second.c_str());
+		m_immGlobals.clear();
+		
+        glsl::astTU *tu = p.parse(shaderType, m_isImmediate);
         if (tu) translate(tu);
         else return false;
 
 		return true;
 	}
 	
+	void GLSLTranslator::ClearImmediate()
+	{
+		
+	}
+	void GLSLTranslator::AddImmediateGlobalDefinition(Variable var)
+	{
+		for (size_t i = 0; i < sizeof(kTypes) / sizeof(kTypes[0]); i++) {
+			if (strcmp(kTypes[i], var.Type.c_str()) == 0) {
+				int type = kTypeValues[i];
+				if (type != glsl::kKeyword_struct) {
+					m_immGlobals.push_back(std::make_pair(var.Name, std::make_pair(type, "")));
+					return;
+				}
+			}
+		}
+
+		m_immGlobals.push_back(std::make_pair(var.Name, std::make_pair((int)glsl::kKeyword_struct, var.Type.c_str())));
+	}
+
 	void GLSLTranslator::translateOperator(int op) {
 		switch (op)
 		{
@@ -399,6 +436,11 @@ namespace sd
 		glsl::astVariable* vdata = (glsl::astVariable*)variable;
 
 		m_locals[m_currentFunction].push_back(vdata->name);
+
+		if (!vdata->baseType->builtin)
+			m_localTypes[m_currentFunction][vdata->name] = ((glsl::astStruct*)vdata->baseType)->name;
+		else
+			m_localTypes[m_currentFunction][vdata->name] = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
 
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
@@ -1421,8 +1463,10 @@ namespace sd
 		if (statement->expression) {
 			translateExpression(statement->expression);
 
-			GLSLTranslator::ExpressionType rType = m_convertExprType(m_curFuncData->ReturnType);
-			generateConvert(rType);
+			if (!m_isImmediate) {
+				GLSLTranslator::ExpressionType rType = m_convertExprType(m_curFuncData->ReturnType);
+				generateConvert(rType);
+			}
 		}
 
 		m_gen.Function.Return();

@@ -26,12 +26,18 @@ namespace sd
 				delete m_transl;
 			
 			m_transl = new CodeTranslator();
+			m_transl->SetImmediate(false);
+
+			m_immTransl = new CodeTranslator();
+			m_immTransl->SetImmediate(true);
 
 			m_entry = entry;
 			m_library = library;
 			m_args = args;
 			m_prog = nullptr;
 			m_stepper = nullptr;
+
+			m_type = stage;
 
 			bool done = m_transl->Parse(stage, src, entry);
 			m_bytecode = m_transl->GetBytecode();
@@ -74,6 +80,7 @@ namespace sd
 		void Jump(int line);
 		bool Step();
 		bool StepOver();
+		bv_variable Immediate(const std::string& command);
 
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)
 		// this makes ShaderDebugger work without needing to know which shader language it uses
@@ -91,7 +98,8 @@ namespace sd
 
 		bool m_discarded;
 
-		Translator* m_transl;
+		sd::ShaderType m_type;
+		Translator* m_transl, *m_immTransl;
 		std::string m_entry;
 		bv_library* m_library;
 		bv_program* m_prog;

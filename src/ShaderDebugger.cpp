@@ -25,8 +25,10 @@ namespace sd
 			bv_program_delete(m_prog);
 		if (m_transl != nullptr)
 			delete m_transl;
-		if (m_library != nullptr)
+		if (m_library != nullptr) {
 			bv_library_delete(m_library);
+			m_library = nullptr;
+		}
 	}
 	bv_variable ShaderDebugger::Execute(const std::string& func, bv_stack* args)
 	{
@@ -180,6 +182,78 @@ namespace sd
 		}
 
 		return done;
+	}
+	bv_variable ShaderDebugger::Immediate(const std::string& src)
+	{
+		m_immTransl->ClearDefinitions();
+
+		// pass on the function definitions
+		const std::vector<sd::Function>& funcs = m_transl->GetFunctions();
+		for (const auto& func : funcs)
+			if (func.Name != m_entry)
+				m_immTransl->AddFunctionDefinition(func);
+
+		// pass on the global definitions
+		const std::vector<sd::Variable>& globals = m_transl->GetGlobals();
+		for (const auto& glob : globals) {
+			m_immTransl->AddGlobalDefinition(glob);
+			m_immTransl->AddImmediateGlobalDefinition(glob);
+		}
+
+		// pass on the local variables
+		const std::vector<std::string>& locals = m_transl->GetLocals(GetCurrentFunction());
+		unsigned int locIndex = 0;
+		for (const auto& loc : locals) {
+			sd::Variable locData;
+			locData.ID = globals.size() + locIndex;
+			locData.Name = loc;
+			locData.Type = m_transl->GetLocalType(GetCurrentFunction(), loc);
+			m_immTransl->AddGlobalDefinition(locData);
+			m_immTransl->AddImmediateGlobalDefinition(locData);
+
+			locIndex++;
+		}
+
+		bool done = m_immTransl->Parse(m_type, src, "immediate");
+		std::vector<uint8_t> bytecode = m_immTransl->GetBytecode();
+
+
+		if (done && m_bytecode.size() > 0) {
+			bv_program* immProg = bv_program_create(bytecode.data());
+			if (immProg == nullptr)
+				return bv_variable_create_void(); // invalid bytecode
+
+			// copy libraries
+			bv_program_add_library(immProg, m_library);
+			
+			// copy all values
+			const std::vector<sd::Variable>& allVariables = m_immTransl->GetGlobals();
+			for (const auto& glob : allVariables) {
+
+				bv_variable* globVal = GetLocalValue(glob.Name);
+				if (globVal == nullptr)
+					globVal = GetValue(glob.Name);
+
+				bv_program_add_global(immProg, glob.Name.c_str());
+				bv_program_set_global(immProg, glob.Name.c_str(), globVal == nullptr ? bv_variable_create_void() : bv_variable_copy(*globVal));
+			}
+
+			bv_function* entryPtr = bv_program_get_function(immProg, "immediate");
+			if (entryPtr == nullptr) {
+				bv_program_delete(immProg);
+				return bv_variable_create_void(); // invalid bytecode
+			}
+
+			// call function and store its return value
+			bv_variable ret = bv_variable_copy(bv_program_call(immProg, entryPtr, NULL, NULL));
+
+			bv_program_delete(immProg);
+
+			return ret;
+		}
+		else return bv_variable_create_void();
+
+		return bv_variable_create_void();
 	}
 
 	Function ShaderDebugger::m_getFunctionInfo(const std::string& fname)

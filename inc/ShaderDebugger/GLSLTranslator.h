@@ -15,8 +15,10 @@ namespace sd
 	class GLSLTranslator : public Translator
 	{
 	public:
-		virtual bool Parse(ShaderType type, const std::string& source, std::string = "main");
+		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main");
 
+		virtual void ClearImmediate();
+		virtual void AddImmediateGlobalDefinition(Variable var);
 
 	private:
 		void translateOperator(int op);
@@ -131,6 +133,8 @@ namespace sd
 
 		std::unordered_map<std::string, std::vector<int>> m_builtInFuncsPtrs;
 		void m_buildFuncArgPtrs();
+
+		std::vector<std::pair<std::string, std::pair<int, std::string>>> m_immGlobals;
 
 		bool m_writeIndexDepth;
 		int m_indexDepth;

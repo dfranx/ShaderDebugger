@@ -36,7 +36,7 @@ void OutputVariableValue(bv_variable* val)
 		printf("%d\n", sd::AsInteger(*val));
 	else if (val->type == bv_type_uint)
 		printf("%u\n", sd::AsUnsignedInteger(*val));
-	else if (val->type == bv_type_uchar)
+	else if (val->type == bv_type_uchar || val->type == bv_type_char)
 		printf("%d\n", (int)sd::AsBool(*val));
 	else if (val->type == bv_type_object) {
 		bv_object* obj = bv_variable_get_object(*val);
@@ -48,6 +48,8 @@ void OutputVariableValue(bv_variable* val)
 		size_t vecPos = objtypeName.find("vec");
 		if (vecPos != std::string::npos && (objtypeName.size() == 4 || objtypeName.size() == 5)) // vecX or gvecX
 		{
+			const char* fieldNames = "xyzw";
+
 			u8 vecLen = sd::GetVectorSizeFromName(objtypeName.c_str());
 			if (vecPos == 0 && !isdigit(objtypeName[3]))
 				vecLen = -1;
@@ -73,7 +75,7 @@ void OutputVariableValue(bv_variable* val)
 						}
 
 						for (u8 i = 0; i < vecLen; i++)
-							printf("%.2f ", vecVal[i]);
+							printf("%c=%.2f ", fieldNames[i], vecVal[i]);
 						printf("\n");
 					}
 					else if (vecType == bv_type_int) {
@@ -86,7 +88,7 @@ void OutputVariableValue(bv_variable* val)
 						}
 
 						for (u8 i = 0; i < vecLen; i++)
-							printf("%d ", vecVal[i]);
+							printf("%c=%d ", fieldNames[i], vecVal[i]);
 						printf("\n");
 					}
 					else if (vecType == bv_type_uint) {
@@ -99,7 +101,7 @@ void OutputVariableValue(bv_variable* val)
 						}
 
 						for (u8 i = 0; i < vecLen; i++)
-							printf("%u ", vecVal[i]);
+							printf("%c=%u ", fieldNames[i], vecVal[i]);
 						printf("\n");
 					}
 					else if (vecType == bv_type_uchar) {
@@ -112,7 +114,7 @@ void OutputVariableValue(bv_variable* val)
 						}
 
 						for (u8 i = 0; i < vecLen; i++)
-							printf("%d ", (int)vecVal[i]);
+							printf("%c=%d ", fieldNames[i], (int)vecVal[i]);
 						printf("\n");
 					}
 					isVector = true;
@@ -252,6 +254,12 @@ int main() {
 					val = dbg.GetValue(tokens[1]);
 
 				OutputVariableValue(val);
+			}
+		}
+		else if (tokens[0] == "imd") { // immediate
+			if (tokens.size() > 1) {
+				bv_variable val = dbg.Immediate(cmd.substr(4));
+				OutputVariableValue(&val);
 			}
 		}
 		else if (tokens[0] == "func")

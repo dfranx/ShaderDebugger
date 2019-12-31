@@ -178,7 +178,7 @@ namespace sd
 					return create_uvec3(prog);
 				else if (type == bv_type_int)
 					return create_ivec3(prog);
-				else if (type == bv_type_uchar)
+				else if (type == bv_type_uchar || type == bv_type_char)
 					return create_bvec3(prog);
 				else
 					return create_vec3(prog);
@@ -189,7 +189,7 @@ namespace sd
 					return create_uvec4(prog);
 				else if (type == bv_type_int)
 					return create_ivec4(prog);
-				else if (type == bv_type_uchar)
+				else if (type == bv_type_uchar || type == bv_type_char)
 					return create_bvec4(prog);
 				else
 					return create_vec4(prog);
@@ -200,7 +200,7 @@ namespace sd
 					return create_uvec2(prog);
 				else if (type == bv_type_int)
 					return create_ivec2(prog);
-				else if (type == bv_type_uchar)
+				else if (type == bv_type_uchar || type == bv_type_char)
 					return create_bvec2(prog);
 				else
 					return create_vec2(prog);
@@ -4371,10 +4371,10 @@ namespace sd
 			bv_library_add_function(lib, "atanh", lib_glsl_atanh);
 			bv_library_add_function(lib, "acos", lib_glsl_cos);
 			bv_library_add_function(lib, "acosh", lib_glsl_cosh);
-			bv_library_add_function(lib, "asin", lib_glsl_sin);
-			bv_library_add_function(lib, "asinh", lib_glsl_sinh);
-			bv_library_add_function(lib, "atan", lib_glsl_tan);
-			bv_library_add_function(lib, "atanh", lib_glsl_tanh);
+			bv_library_add_function(lib, "sin", lib_glsl_sin);
+			bv_library_add_function(lib, "sinh", lib_glsl_sinh);
+			bv_library_add_function(lib, "tan", lib_glsl_tan);
+			bv_library_add_function(lib, "tanh", lib_glsl_tanh);
 			bv_library_add_function(lib, "degrees", lib_glsl_degrees);
 			bv_library_add_function(lib, "radians", lib_glsl_radians);
 

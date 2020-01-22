@@ -64,11 +64,17 @@ bv_variable_deinitialize(&result);
 List of other cool functions: `StepOver()`, `StepOut()`, `Continue()`, `Jump()`, `AddBreakpoint()`, `AddConditionalBreakpoint()`
 
 ## Limitations
-List of things that currently don't work but I plan to fix them:
+List of things that currently don't work (I plan to fix/add them):
 ### GLSL
-- doesn't support macros, interface blocks, local & structure member arrays & global variable initalization (unless it has const keyword)
+- doesn't support interface blocks, local & structure member arrays & global variable initalization (unless it has const keyword)
 - parsed, but not stored & not implemented: auxilary, precision, memory, invariant
 - parsed & stored but not implemented: smooth, flat, noperspective
 
 ### HLSL
-- not implemented yet
+- classes / interfaces
+- switch statement
+- else if () ??
+
+### Both
+- cubemaps
+- preprocessor

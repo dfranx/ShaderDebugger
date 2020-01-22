@@ -550,10 +550,11 @@ namespace sd
 		GLSLTranslator::ExpressionType lType = evaluateExpressionType(expression->operand1);
 		GLSLTranslator::ExpressionType rType = evaluateExpressionType(expression->operand2);
 
-		if (expression->assignment != glsl::kOperator_assign) // push the lhs to the stack too if we are using some +=, -=, etc... operator
+		if (expression->assignment != glsl::kOperator_assign) {// push the lhs to the stack too if we are using some +=, -=, etc... operator
 			translateExpression(expression->operand1);
-		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
-			generateConvert(rType);
+			if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+				generateConvert(rType);
+		}
 
 		translateExpression(expression->operand2); // rhs
 		if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
@@ -1622,6 +1623,10 @@ namespace sd
 
 		for (size_t i = 0; i < function->statements.size(); i++)
 			translateStatement(function->statements[i]);
+
+		// exit the function
+		m_curFuncData = nullptr;
+		m_currentFunction = "";
 	}
 
 	void GLSLTranslator::translateStructure(glsl::astStruct *structure) {

@@ -14,6 +14,7 @@ namespace sd
 			Smooth = Flat = NoPerspective = false;
 			IsArray = false;
 			Storage = StorageType::None;
+			Semantic = "";
 		}
 
 		enum class StorageType
@@ -26,7 +27,8 @@ namespace sd
 			Uniform,
 			Varying,
 			Buffer,
-			Shared
+			Shared,
+			InOut
 		} Storage;
 
 		size_t ID;
@@ -37,5 +39,6 @@ namespace sd
 		std::string Type;
 		bool Smooth, Flat, NoPerspective;
 		bool IsArray;
+		std::string Semantic; // HLSL only
 	};
 }

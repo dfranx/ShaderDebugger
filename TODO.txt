@@ -1,13 +1,18 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- rename Library::GLSL() & Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle(), rename lib_glsl_* -> lib_*
+- rename Library::GLSL() & Library::GLSLswizzle() to GLSL::Library() & GLSL::Swizzle(), rename lib_glsl_* -> lib_*, GLSLTranslator to GLSL::Compiler
 - move DiscardFunction to libGLSL
 - recode vec constructor so that initalizations such as vec4(float, vec2, float) are possible
+
+HLSL BlueVM
+- libHLSL
+- testing
+
+Both:
 - test params with 'out' keyword 
 - test arrays
 - test variables with no initial value
-- HLSL compiler
 
 - [FUTURE] #define & #version
 - [FUTURE] dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine, fwidth, fwidthCoarse, fwidthFine

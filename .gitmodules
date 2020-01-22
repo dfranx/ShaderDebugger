@@ -10,3 +10,6 @@
 [submodule "libs/FastNoise"]
 	path = libs/FastNoise
 	url = https://github.com/Auburns/FastNoise.git
+[submodule "libs/hlslparser"]
+	path = libs/hlslparser
+	url = https://github.com/dfranx/hlslparser.git

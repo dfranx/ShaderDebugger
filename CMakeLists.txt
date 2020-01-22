@@ -10,6 +10,7 @@ set(SOURCES
 	src/Utils.cpp
 	src/GLSLLibrary.cpp
 	src/GLSLTranslator.cpp
+	src/HLSLTranslator.cpp
 	src/ShaderDebugger.cpp
 	src/Texture.cpp
 	
@@ -19,6 +20,12 @@ set(SOURCES
 	libs/glsl-parser/lexer.cpp
 	libs/glsl-parser/parser.cpp
 	libs/glsl-parser/util.cpp
+
+# hlslparser
+	libs/hlslparser/Engine.cpp
+	libs/hlslparser/HLSLParser.cpp
+	libs/hlslparser/HLSLTokenizer.cpp
+	libs/hlslparser/HLSLTree.cpp
 
 # BlueVM
 	libs/BlueVM/src/bv_array.c

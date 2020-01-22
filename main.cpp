@@ -8,6 +8,7 @@
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <ShaderDebugger/GLSLTranslator.h>
+#include <ShaderDebugger/HLSLTranslator.h>
 #include <ShaderDebugger/ShaderDebugger.h>
 
 
@@ -143,12 +144,12 @@ void OutputVariableValue(bv_variable* val)
 }
 
 int main() {
-	std::ifstream t("shader.glsl");
+	std::ifstream t("shader.hlsl");
 	std::string src((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 	t.close();
 
 	sd::ShaderDebugger dbg;
-	bool res = dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
+	bool res = dbg.SetSource<sd::HLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
 	
 	if (!res) {
 		printf("[ERROR] Failed to compile the shader.\n");
@@ -317,13 +318,24 @@ int main() {
 	printf("Finished debugging!\n");
 	printf("Discarded: %d\n", (int)dbg.IsDiscarded());
 
-	printf("Output:\n");
-	for (const auto& gl : globals) {
-		if (gl.Storage == sd::Variable::StorageType::Out) {
-			printf("\t%s = ", gl.Name.c_str());
-			OutputVariableValue(dbg.GetValue(gl.Name));
+	// if (isGLSL) {
+		printf("Output:\n");
+		for (const auto& gl : globals) {
+			if (gl.Storage == sd::Variable::StorageType::Out) {
+				printf("\t%s = ", gl.Name.c_str());
+				OutputVariableValue(dbg.GetValue(gl.Name));
+			}
 		}
-	}
+	// }
+
+	// if (isHLSL) {
+		bv_variable retValue = dbg.GetReturnValue();
+		if (retValue.type != bv_type_void) {
+			printf("Return: ");
+			OutputVariableValue(&retValue);
+		}
+		bv_variable_deinitialize(&retValue);
+	// }
 
     return 0;
 }

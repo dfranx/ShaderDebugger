@@ -137,7 +137,17 @@ void OutputVariableValue(bv_variable* val)
 			}
 			else
 			{
-				// TODO: user defined structures
+				bool isNull = true;
+				for (int i = 0; i < obj->type->props.name_count; i++) {
+					if (obj->prop[i].type == bv_type_void)
+						continue;
+					isNull = false;
+					printf(".%s = ", obj->type->props.names[i]);
+					OutputVariableValue(&obj->prop[i]);
+				}
+
+				if (isNull)
+					printf("null\n");
 			}
 		}
 	}

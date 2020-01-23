@@ -30,6 +30,7 @@ namespace sd
 		inline void SetImmediate(bool s) { m_isImmediate = s; }
 		inline bool GetImmediate() { return m_isImmediate; }
 		inline void AddFunctionDefinition(const Function& func) { m_func.push_back(func); }
+		inline void AddStructureDefinition(const Structure& str) { m_structures.push_back(str); }
 		inline void AddGlobalDefinition(const Variable& var) { m_globals.push_back(var); }
 		inline void ClearDefinitions() { m_globals.clear(); m_structures.clear(); m_func.clear(); m_locals.clear(); m_localTypes.clear(); ClearImmediate(); }
 

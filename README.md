@@ -78,3 +78,4 @@ List of things that currently don't work (I plan to fix/add them):
 ### Both
 - cubemaps
 - preprocessor
+- initialize structure members

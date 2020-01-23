@@ -125,6 +125,13 @@ namespace sd
 		return type.Type == ag::Type::Object || (type.Rows * type.Columns != 1);
 	}
 
+	char* stralloc(const std::string& str)
+	{
+		char* ret = (char*)calloc(str.size() + 1, sizeof(char));
+		strcpy(ret, str.c_str());
+		return ret;
+	}
+
 	Function HLSLTranslator::m_matchFunction(const char* name, int argCount, M4::HLSLExpression* args)
 	{
 		Function ret;
@@ -179,6 +186,34 @@ namespace sd
 		return ret;
 	}
 
+	void HLSLTranslator::m_freeImmediate()
+	{
+		for (int i = 0; i < m_immFuncs.size(); i++) {
+			M4::HLSLArgument* arg = m_immFuncs[i]->argument;
+
+			while (arg) {
+				M4::HLSLArgument* curArg = arg;
+				arg = arg->nextArgument;
+				delete curArg;
+			}
+
+			delete m_immFuncs[i];
+		}
+		for (int i = 0; i < m_immStructs.size(); i++) {
+			M4::HLSLStructField* field = m_immStructs[i]->field;
+
+			while (field) {
+				M4::HLSLStructField* curArg = field;
+				field = field->nextField;
+				delete curArg;
+			}
+
+			delete m_immStructs[i];
+		}
+		m_immStructs.clear();
+		m_immFuncs.clear();
+	}
+
 	// hlslparser allocator functions
 	void* New(void* userData, size_t size)
 	{
@@ -220,6 +255,11 @@ namespace sd
 		m_entryName                     = NULL;
 		m_target                        = ShaderType::Pixel;
 		m_isInsideBuffer                = false;
+		m_currentFunction = "";
+		m_entryFunction = "";
+		m_isSet = m_usePointer = false;
+		m_caseIfDefault = false;
+		m_caseIfAddr = 0;
 	}
 	HLSLTranslator::~HLSLTranslator()
 	{
@@ -245,7 +285,7 @@ namespace sd
 
 		std::string actualSource = source;
 		if (m_isImmediate)
-			actualSource = "void immediate() { return " + source + "; }"; // the return type doesn't matter here :P
+			actualSource = "void immediate()\n{\nreturn " + source + ";\n}"; // the return type doesn't matter here :P
 		
 		// create allocator and logger
 		M4::Allocator allocator;
@@ -260,21 +300,98 @@ namespace sd
 		logger.LogErrorArgList = LogErrorArgs;
 		
 		// create parser
-		M4::HLSLParser parser(&allocator, &logger, "shader.hlsl", source.data(), source.size());
+		M4::HLSLParser parser(&allocator, &logger, "shader.hlsl", actualSource.data(), actualSource.size());
 		M4::HLSLTree tree(&allocator);
 		
-		// TODO:
-		// for (const auto& glob : m_immGlobals)
-		//	p.addGlobal(glob.first.c_str(), glob.second.first, glob.second.second.c_str());
-		// m_immGlobals.clear();
+		// structure definitions
+		for (const auto& glob : m_immGlobals) {
+			M4::HLSLType globType(glob.second.first);
+			if (globType.baseType == M4::HLSLBaseType_UserDefined)
+				globType.typeName = glob.second.second.c_str();
+
+			parser.DeclareVariable(glob.first.c_str(), globType);
+		}
+		
+		std::vector<char*> string_pool; // <- because of the hlslparser....
+		if (m_isImmediate) {
+			// function definitions
+			for (const auto& f : m_func) {
+				M4::HLSLFunction* function = new M4::HLSLFunction();
+				string_pool.push_back(stralloc(f.Name));
+				function->name = string_pool[string_pool.size()-1];
+				function->returnType.baseType = M4::HLSLParser::GetTypeFromString(f.ReturnType);
+				function->returnType.typeName = f.ReturnType.c_str();
+				function->numArguments = f.Arguments.size();
+
+				M4::HLSLArgument* argDef = nullptr;
+				size_t curArgIndex = 0;
+				for (const auto& arg : f.Arguments) {
+					if (!argDef)
+						argDef = new M4::HLSLArgument();
+					string_pool.push_back(stralloc(arg.Name));
+					argDef->name = string_pool[string_pool.size() - 1];
+					argDef->type.baseType = M4::HLSLParser::GetTypeFromString(arg.Type);
+					argDef->type.typeName = arg.Type.c_str();
+
+					if (function->argument == nullptr)
+						function->argument = argDef;
+					if (curArgIndex != f.Arguments.size() - 1) {
+						argDef->nextArgument = new M4::HLSLArgument();
+						argDef = argDef->nextArgument;
+					}
+
+					curArgIndex++;
+				}
+
+				m_immFuncs.push_back(function);
+				parser.DeclareFunction(function);
+			}
+
+			// structure definitions
+			for (const auto& s : m_structures)
+			{
+				M4::HLSLStruct* structure = new M4::HLSLStruct();
+				string_pool.push_back(stralloc(s.Name));
+				structure->name = string_pool[string_pool.size() - 1];
+
+				M4::HLSLStructField* lastField = NULL;
+
+				// Add the struct to our list of user defined types.
+				for (const auto& f : s.Members)
+				{
+					M4::HLSLStructField* field = new M4::HLSLStructField();
+
+					string_pool.push_back(stralloc(f.Name));
+					field->name = string_pool[string_pool.size() - 1];
+					field->type.baseType = M4::HLSLParser::GetTypeFromString(f.Type);
+					field->type.typeName = f.Type.c_str();
+
+					if (lastField == NULL)
+						structure->field = field;
+					else
+						lastField->nextField = field;
+					lastField = field;
+				}
+
+				m_immStructs.push_back(structure);
+				parser.DeclareStructure(structure);
+			}
+		}
 
 		if (!parser.Parse(&tree))
 		{
 			LogError(NULL, "Parsing failed, aborting\n");
+			m_immGlobals.clear();
 			return false;
 		}
 
 		bool res = translate(&tree);
+
+		for (auto& str : string_pool)
+			free(str);
+		m_immGlobals.clear();
+		string_pool.clear();
+		m_freeImmediate();
 
 		return res;
 	}
@@ -284,7 +401,8 @@ namespace sd
 	}
 	void HLSLTranslator::AddImmediateGlobalDefinition(Variable var)
 	{
-
+		M4::HLSLType baseType(M4::HLSLParser::GetTypeFromString(var.Type));
+		m_immGlobals.push_back(std::make_pair(var.Name, std::make_pair(baseType, var.Type)));
 	}
 
 	void HLSLTranslator::m_generateConvert(HLSLTranslator::ExpressionType etype)
@@ -588,8 +706,8 @@ namespace sd
 			Variable pdata;
 			pdata.ID = index;
 			pdata.Name = arg->name;
-			pdata.Type = arg->type.typeName;
-			pdata.Semantic = arg->sv_semantic ? arg->sv_semantic : arg->semantic;
+			pdata.Type = m_convertType(arg->type).Name;
+			pdata.Semantic = arg->sv_semantic ? arg->sv_semantic : (arg->semantic ? arg->semantic : "");
 			
 			switch (arg->modifier)
 			{
@@ -851,7 +969,7 @@ namespace sd
 				M4::HLSLType ftype = field->type;
 				HLSLTranslator::ExpressionType etype = m_convertType(ftype);
 				fieldData.Type = etype.Name;
-				fieldData.Semantic = field->sv_semantic ? field->sv_semantic : field->semantic;
+				fieldData.Semantic = field->sv_semantic ? field->sv_semantic : (field->semantic ? field->semantic : "");
 				fieldData.IsArray = ftype.array;
 				
 				str.Members.push_back(fieldData);
@@ -1065,11 +1183,13 @@ namespace sd
 			var.Smooth = true;
 			var.Flat = false;
 			var.NoPerspective = false;
-			var.Storage = Variable::StorageType::None;
+			var.Storage = Variable::StorageType::In;
 			var.Name = declr->name;
 
-			if (type.flags & M4::HLSLTypeFlag_Const) var.Storage = Variable::StorageType::Constant;
-			if (type.flags & M4::HLSLTypeFlag_Static) {}
+			if (m_isInsideBuffer) {
+				if (type.flags & M4::HLSLTypeFlag_Const) var.Storage = Variable::StorageType::Constant;
+				if (type.flags & M4::HLSLTypeFlag_Static) {}
+			}
 
 			// Interpolation modifiers.
 			if (type.flags & M4::HLSLTypeFlag_Centroid) { }

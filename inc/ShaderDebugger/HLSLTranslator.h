@@ -95,6 +95,8 @@ namespace sd
 
 		bool            m_isInsideBuffer;
 
+		std::vector<std::pair<std::string, std::pair<M4::HLSLType, std::string>>> m_immGlobals;
+
 		std::unordered_map<std::string, std::string> m_initObjsInMain;
 		std::unordered_map<std::string, M4::HLSLExpression*> m_initInMain;
 		std::unordered_map<std::string, M4::HLSLExpression*> m_initArraysInMain; // global arrays
@@ -107,6 +109,11 @@ namespace sd
 		bool m_isSet, m_usePointer;
 		bool m_caseIfDefault;
 		size_t m_caseIfAddr;
+
+		// immediate mode function definitions
+		std::vector<M4::HLSLFunction*> m_immFuncs;
+		std::vector<M4::HLSLStruct*> m_immStructs;
+		void m_freeImmediate();
 	};
 
 }

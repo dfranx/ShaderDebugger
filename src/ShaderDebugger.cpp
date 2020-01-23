@@ -262,6 +262,11 @@ namespace sd
 			if (func.Name != m_entry)
 				m_immTransl->AddFunctionDefinition(func);
 
+		// pass on the structure definitions
+		const std::vector<sd::Structure>& structs = m_transl->GetStructures();
+		for (const auto& str : structs)
+			m_immTransl->AddStructureDefinition(str);
+
 		// pass on the global definitions
 		const std::vector<sd::Variable>& globals = m_transl->GetGlobals();
 		for (const auto& glob : globals) {
@@ -292,6 +297,9 @@ namespace sd
 			if (immProg == nullptr)
 				return bv_variable_create_void(); // invalid bytecode
 
+			for (u16 i = 0; i < m_prog->block->functions->count; i++)
+				bv_program_add_function_pointer(immProg, m_prog->block->functions->names[i], m_prog->functions[i]);
+			
 			// property getter
 			immProg->property_getter = m_immTransl->PropertyGetter;
 

@@ -1,5 +1,5 @@
 #pragma once
-#include <ShaderDebugger/Translator.h>
+#include <ShaderDebugger/Compiler.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Breakpoint.h>
 #include <glm/glm.hpp>
@@ -20,17 +20,19 @@ namespace sd
 		ShaderDebugger();
 		~ShaderDebugger();
 
-		template<typename CodeTranslator>
+		template<typename CodeCompiler>
 		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
 		{
-			if (m_transl != nullptr)
-				delete m_transl;
+			if (m_compiler != nullptr)
+				delete m_compiler;
+			if (m_immCompiler != nullptr)
+				delete m_immCompiler;
 			
-			m_transl = new CodeTranslator();
-			m_transl->SetImmediate(false);
+			m_compiler = new CodeCompiler();
+			m_compiler->SetImmediate(false);
 
-			m_immTransl = new CodeTranslator();
-			m_immTransl->SetImmediate(true);
+			m_immCompiler = new CodeCompiler();
+			m_immCompiler->SetImmediate(true);
 
 			m_entry = entry;
 			m_library = library;
@@ -40,8 +42,8 @@ namespace sd
 
 			m_type = stage;
 
-			bool done = m_transl->Parse(stage, src, entry);
-			m_bytecode = m_transl->GetBytecode();
+			bool done = m_compiler->Parse(stage, src, entry);
+			m_bytecode = m_compiler->GetBytecode();
 
 			if (done && m_bytecode.size() > 0) {
 				m_prog = bv_program_create(m_bytecode.data());
@@ -51,7 +53,7 @@ namespace sd
 				m_prog->user_data = (void*)this;
 				bv_program_add_function(m_prog, "$$discard", DiscardFunction);
 
-				m_prog->property_getter = m_transl->PropertyGetter;
+				m_prog->property_getter = m_compiler->PropertyGetter;
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
 				if (entryPtr == nullptr)
@@ -66,7 +68,7 @@ namespace sd
 			return true;
 		}
 
-		inline Translator* GetTranslator() { return m_transl; }
+		inline Compiler* GetCompiler() { return m_compiler; }
 
 		inline bv_variable Execute() { return Execute(m_entry, m_args); }
 		bv_variable Execute(const std::string& func, bv_stack* args = NULL); // TODO: arguments
@@ -110,7 +112,7 @@ namespace sd
 		std::vector<Breakpoint> m_breakpoints;
 
 		sd::ShaderType m_type;
-		Translator* m_transl, *m_immTransl;
+		Compiler* m_compiler, *m_immCompiler;
 		std::string m_entry;
 		bv_library* m_library;
 		bv_program* m_prog;

@@ -16,7 +16,7 @@ extern "C" {
 
 namespace sd
 {
-	class Translator
+	class Compiler
 	{
 	public:
 		inline ag::Generator& GetBytecodeGenerator() { return m_gen; }

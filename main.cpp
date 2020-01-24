@@ -7,8 +7,9 @@
 #include <ShaderDebugger/Utils.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/GLSLLibrary.h>
-#include <ShaderDebugger/GLSLTranslator.h>
-#include <ShaderDebugger/HLSLTranslator.h>
+#include <ShaderDebugger/GLSLCompiler.h>
+#include <ShaderDebugger/HLSLLibrary.h>
+#include <ShaderDebugger/HLSLCompiler.h>
 #include <ShaderDebugger/ShaderDebugger.h>
 
 
@@ -24,6 +25,33 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
 
     ret.push_back(str.substr(prev));
     return ret;
+}
+
+std::pair<int, uint8_t> GetVectorData(const std::string& vectype)
+{
+	static const std::vector<std::string> vecNames =
+	{ 
+		"float4", "int4", "bool4", "half4", "uint4",
+		"float3", "int3", "bool3", "half3", "uint3",
+		"float2", "int2", "bool2", "half2", "uint2",
+		"vec4", "ivec4", "bvec4", "dvec4", "uvec4",
+		"vec3", "ivec3", "bvec3", "dvec3", "uvec3"
+		"vec2", "ivec2", "bvec2", "dvec2", "uvec2"
+	};
+	static const std::vector<bv_type> vecTypes =
+	{ 
+		bv_type_float, bv_type_int, bv_type_uchar, bv_type_float, bv_type_uint
+	};
+	static const std::vector<int> vecSizes =
+	{
+		4,3,2
+	};
+
+	for (int i = 0; i < vecNames.size(); i++)
+		if (vecNames[i] == vectype)
+			return std::make_pair(vecSizes[(i/5)%3], vecTypes[i % 5]);
+
+	return std::make_pair<int, uint8_t>(0, bv_type_void);
 }
 
 void OutputVariableValue(bv_variable* val)
@@ -44,25 +72,16 @@ void OutputVariableValue(bv_variable* val)
 		std::string objtypeName(obj->type->name);
 
 		// vectors
-		// do additional checks... the user might have defined structure zvec5... you never know :P
 		bool isVector = false;
-		size_t vecPos = objtypeName.find("vec");
-		if (vecPos != std::string::npos && (objtypeName.size() == 4 || objtypeName.size() == 5)) // vecX or gvecX
+		std::pair<int, bv_type> vecData = GetVectorData(objtypeName);
+		if (vecData.second != bv_type_void) // vecX or gvecX
 		{
 			const char* fieldNames = "xyzw";
 
-			u8 vecLen = sd::GetVectorSizeFromName(objtypeName.c_str());
-			if (vecPos == 0 && !isdigit(objtypeName[3]))
-				vecLen = -1;
-			else if (vecPos == 1 && !isdigit(objtypeName[4]))
-				vecLen = -1;
+			u8 vecLen = obj->type->props.name_count;
 
 			if (vecLen >= 2 && vecLen <= 4) {
-				bv_type vecType = sd::GetVectorTypeFromName(objtypeName.c_str());
-
-				char chType = objtypeName[0];
-				if (vecPos == 1 && chType != 'b' && chType != 'i' && chType != 'u' && chType != 'd')
-					vecType = bv_type_void;
+				bv_type vecType = vecData.second;
 
 				// actual vector
 				if (vecType != bv_type_void) {
@@ -159,7 +178,7 @@ int main() {
 	t.close();
 
 	sd::ShaderDebugger dbg;
-	bool res = dbg.SetSource<sd::HLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
+	bool res = dbg.SetSource<sd::HLSLCompiler>(sd::ShaderType::Pixel, src, "main", NULL, sd::HLSL::Library());
 	
 	if (!res) {
 		printf("[ERROR] Failed to compile the shader.\n");
@@ -171,7 +190,7 @@ int main() {
 	white.Fill(glm::vec4(0.5f, 0.1f, 0.6f, 0.2f));
 	
 	// initialize globals
-	const auto& globals = dbg.GetTranslator()->GetGlobals();
+	const auto& globals = dbg.GetCompiler()->GetGlobals();
 	for (const auto& global : globals)
 	{
 		if (global.Storage == sd::Variable::StorageType::Uniform ||

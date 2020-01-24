@@ -28,7 +28,7 @@ Run the program:
 std::string src = ... your shader code ...;
 
 sd::ShaderDebugger dbg;
-dbg.SetSource<sd::GLSLTranslator>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
+dbg.SetSource<sd::GLSLCompiler>(sd::ShaderType::Pixel, src, "main", NULL, sd::Library::GLSL());
 
 dbg.SetValue("iFactor", 0.7f);
 dbg.SetValue("iColor", "vec3", glm::vec3(0.5f, 0.6f, 0.7f));
@@ -65,6 +65,7 @@ List of other cool functions: `StepOver()`, `StepOut()`, `Continue()`, `Jump()`,
 
 ## Limitations
 List of things that currently don't work (I plan to fix/add them):
+
 ### GLSL
 - doesn't support interface blocks, local & structure member arrays & global variable initalization (unless it has const keyword)
 - parsed, but not stored & not implemented: auxilary, precision, memory, invariant
@@ -73,7 +74,6 @@ List of things that currently don't work (I plan to fix/add them):
 ### HLSL
 - classes / interfaces
 - switch statement
-- else if () ??
 
 ### Both
 - cubemaps

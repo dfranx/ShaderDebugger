@@ -12,11 +12,11 @@
 #include <hlslparser/HLSLTree.h>
 
 #include <ShaderDebugger/GLSLLibrary.h>
-#include <ShaderDebugger/HLSLTranslator.h>
+#include <ShaderDebugger/HLSLCompiler.h>
 
 namespace sd
 {
-	HLSLTranslator::ExpressionType HLSLTranslator::m_convertType(const M4::HLSLBaseType& type, const char* userDefined)
+	HLSLCompiler::ExpressionType HLSLCompiler::m_convertType(const M4::HLSLBaseType& type, const char* userDefined)
 	{
 		switch (type)
 		{
@@ -68,11 +68,11 @@ namespace sd
 		default: return ExpressionType("void", ag::Type::Void);
 		}
 	}
-	HLSLTranslator::ExpressionType HLSLTranslator::m_convertType(const M4::HLSLType& type)
+	HLSLCompiler::ExpressionType HLSLCompiler::m_convertType(const M4::HLSLType& type)
 	{
 		return m_convertType(type.baseType, type.typeName);
 	}
-	HLSLTranslator::ExpressionType HLSLTranslator::m_convertType(const std::string& type)
+	HLSLCompiler::ExpressionType HLSLCompiler::m_convertType(const std::string& type)
 	{
 		if (type == "void") return m_convertType(M4::HLSLBaseType_Void);
 		else if (type == "float") return m_convertType(M4::HLSLBaseType_Float);
@@ -120,7 +120,7 @@ namespace sd
 		else if (type == "SamplerState") return m_convertType(M4::HLSLBaseType_SamplerState);
 		return m_convertType(M4::HLSLBaseType_UserDefined, type.c_str());
 	}
-	bool HLSLTranslator::m_isTypeActuallyStruct(HLSLTranslator::ExpressionType type)
+	bool HLSLCompiler::m_isTypeActuallyStruct(HLSLCompiler::ExpressionType type)
 	{
 		return type.Type == ag::Type::Object || (type.Rows * type.Columns != 1);
 	}
@@ -132,7 +132,7 @@ namespace sd
 		return ret;
 	}
 
-	Function HLSLTranslator::m_matchFunction(const char* name, int argCount, M4::HLSLExpression* args)
+	Function HLSLCompiler::m_matchFunction(const char* name, int argCount, M4::HLSLExpression* args)
 	{
 		Function ret;
 		ret.Name = "";
@@ -140,7 +140,7 @@ namespace sd
 		int match_args = -1;
 
 		int aIndex = 0;
-		std::vector<HLSLTranslator::ExpressionType> paramTypes(argCount);
+		std::vector<HLSLCompiler::ExpressionType> paramTypes(argCount);
 		M4::HLSLExpression* arg = args;
 		while (arg) {
 			paramTypes[aIndex] = m_convertType(arg->expressionType);
@@ -186,7 +186,7 @@ namespace sd
 		return ret;
 	}
 
-	void HLSLTranslator::m_freeImmediate()
+	void HLSLCompiler::m_freeImmediate()
 	{
 		for (int i = 0; i < m_immFuncs.size(); i++) {
 			M4::HLSLArgument* arg = m_immFuncs[i]->argument;
@@ -250,7 +250,7 @@ namespace sd
 		va_end(args);
 	}
 
-	HLSLTranslator::HLSLTranslator()
+	HLSLCompiler::HLSLCompiler()
 	{
 		m_entryName                     = NULL;
 		m_target                        = ShaderType::Pixel;
@@ -261,17 +261,17 @@ namespace sd
 		m_caseIfDefault = false;
 		m_caseIfAddr = 0;
 	}
-	HLSLTranslator::~HLSLTranslator()
+	HLSLCompiler::~HLSLCompiler()
 	{
 	}
 
-	bool HLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
+	bool HLSLCompiler::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
 		if (!m_isImmediate)
 			ClearDefinitions();
 		m_gen.Reset();
 
-		PropertyGetter = Library::GLSLswizzle;
+		PropertyGetter = GLSL::Swizzle;
 		m_lastLineSaved = -1;
 		m_isSet = false;
 		m_usePointer = false;
@@ -395,17 +395,17 @@ namespace sd
 
 		return res;
 	}
-	void HLSLTranslator::ClearImmediate()
+	void HLSLCompiler::ClearImmediate()
 	{
 
 	}
-	void HLSLTranslator::AddImmediateGlobalDefinition(Variable var)
+	void HLSLCompiler::AddImmediateGlobalDefinition(Variable var)
 	{
 		M4::HLSLType baseType(M4::HLSLParser::GetTypeFromString(var.Type));
 		m_immGlobals.push_back(std::make_pair(var.Name, std::make_pair(baseType, var.Type)));
 	}
 
-	void HLSLTranslator::m_generateConvert(HLSLTranslator::ExpressionType etype)
+	void HLSLCompiler::m_generateConvert(HLSLCompiler::ExpressionType etype, int args)
 	{
 		if (etype.Type == ag::Type::Object) {
 			// TODO: ?
@@ -416,18 +416,18 @@ namespace sd
 			if (etype.Columns * etype.Rows == 1)
 				m_gen.Function.Convert(etype.Type);
 			else
-				m_gen.Function.NewObjectByName(etype.Name, 1); // example: ivec3(vec3())
+				m_gen.Function.NewObjectByName(etype.Name, args); // example: ivec3(vec3())
 		}
 	}
 
-	bool HLSLTranslator::translate(M4::HLSLTree* tree)
+	bool HLSLCompiler::translate(M4::HLSLTree* tree)
 	{
 		M4::HLSLRoot* root = tree->GetRoot();
 		translateStatements(root->statement);
 
 		return true;
 	}
-	void HLSLTranslator::translateExpressionList(M4::HLSLExpression* expression)
+	void HLSLCompiler::translateExpressionList(M4::HLSLExpression* expression)
 	{
 		int numExpressions = 0;
 		while (expression != NULL)
@@ -438,7 +438,7 @@ namespace sd
 		}
 	}
 
-	void HLSLTranslator::translateExpression(M4::HLSLExpression* expression)
+	void HLSLCompiler::translateExpression(M4::HLSLExpression* expression)
 	{
 		m_exportLine((M4::HLSLNode*)expression);
 
@@ -455,8 +455,28 @@ namespace sd
 		else if (expression->nodeType == M4::HLSLNodeType_ConstructorExpression)
 		{
 			M4::HLSLConstructorExpression* constructorExpression = static_cast<M4::HLSLConstructorExpression*>(expression);
-			translateExpressionList(constructorExpression->argument);
-			m_generateConvert(m_convertType(constructorExpression->type));
+
+			// TODO: move this to translateConstructor
+			int argc = 0;
+			M4::HLSLExpression* arg = constructorExpression->argument;
+			while (arg) {
+				arg = arg->nextExpression;
+				argc++;
+			}
+
+			int index = argc-1;
+			if (argc != 0) {
+				while (index >= 0)
+				{
+					arg = constructorExpression->argument;
+					for (int i = 0; i < index; i++)
+						arg = arg->nextExpression;
+					translateExpression(arg);
+					index--;
+				}
+			}
+
+			m_generateConvert(m_convertType(constructorExpression->type), argc);
 		}
 		else if (expression->nodeType == M4::HLSLNodeType_LiteralExpression)
 		{
@@ -515,7 +535,7 @@ namespace sd
 		else { }
 	}
 	
-	void HLSLTranslator::translateOperator(M4::HLSLBinaryOp op)
+	void HLSLCompiler::translateOperator(M4::HLSLBinaryOp op)
 	{
 		switch (op)
 		{
@@ -536,10 +556,10 @@ namespace sd
 		case M4::HLSLBinaryOp_BitXor:       m_gen.Function.BitXor(); break;
 		}
 	}
-	void HLSLTranslator::translateBinaryExpression(M4::HLSLBinaryExpression* expr)
+	void HLSLCompiler::translateBinaryExpression(M4::HLSLBinaryExpression* expr)
 	{
-		HLSLTranslator::ExpressionType lType = m_convertType(expr->expression1->expressionType);
-		HLSLTranslator::ExpressionType rType = m_convertType(expr->expression2->expressionType);
+		HLSLCompiler::ExpressionType lType = m_convertType(expr->expression1->expressionType);
+		HLSLCompiler::ExpressionType rType = m_convertType(expr->expression2->expressionType);
 
 		translateExpression(expr->expression1);
 		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
@@ -551,10 +571,10 @@ namespace sd
 
 		translateOperator(expr->binaryOp);
 	}
-	void HLSLTranslator::translateAssignExpression(M4::HLSLBinaryExpression* expr)
+	void HLSLCompiler::translateAssignExpression(M4::HLSLBinaryExpression* expr)
 	{
-		HLSLTranslator::ExpressionType lType = m_convertType(expr->expression1->expressionType);
-		HLSLTranslator::ExpressionType rType = m_convertType(expr->expression2->expressionType);
+		HLSLCompiler::ExpressionType lType = m_convertType(expr->expression1->expressionType);
+		HLSLCompiler::ExpressionType rType = m_convertType(expr->expression2->expressionType);
 
 		if (expr->binaryOp != M4::HLSLBinaryOp_Assign) { // push the lhs to the stack too if we are using some +=, -=, etc... operator
 			translateExpression(expr->expression1);
@@ -581,7 +601,7 @@ namespace sd
 		translateExpression(expr->expression1); // lhs
 		m_isSet = false;
 	}
-	void HLSLTranslator::translateUnaryExpression(M4::HLSLUnaryExpression* expr)
+	void HLSLCompiler::translateUnaryExpression(M4::HLSLUnaryExpression* expr)
 	{
 		// check if pre or post increment/decrement
 		bool pre = true, isIncDec = false;
@@ -625,7 +645,7 @@ namespace sd
 		if (isIncDec && !pre)
 			m_gen.Function.PopStack();
 	}
-	void HLSLTranslator::translateIdentifierExpression(M4::HLSLIdentifierExpression* expression)
+	void HLSLCompiler::translateIdentifierExpression(M4::HLSLIdentifierExpression* expression)
 	{
 		const std::string vname = std::string(expression->name);
 		bool found = false;
@@ -690,12 +710,12 @@ namespace sd
 				m_gen.Function.SetGlobalByName(vname);
 		}
 	}
-	void HLSLTranslator::translateCastingExpression(M4::HLSLCastingExpression* expression)
+	void HLSLCompiler::translateCastingExpression(M4::HLSLCastingExpression* expression)
 	{
 		translateExpression(expression->expression);
 		m_convertType(expression->type);
 	}
-	void HLSLTranslator::translateArguments(M4::HLSLArgument* argument)
+	void HLSLCompiler::translateArguments(M4::HLSLArgument* argument)
 	{
 		m_curFuncData->Arguments.clear();
 
@@ -724,7 +744,7 @@ namespace sd
 			arg = arg->nextArgument;
 		}
 	}
-	void HLSLTranslator::translateLiteralExpression(M4::HLSLLiteralExpression* expr)
+	void HLSLCompiler::translateLiteralExpression(M4::HLSLLiteralExpression* expr)
 	{
 		switch (expr->type)
 		{
@@ -742,7 +762,7 @@ namespace sd
 			ASSERT(0);
 		}
 	}
-	void HLSLTranslator::translateTernary(M4::HLSLConditionalExpression* expr)
+	void HLSLCompiler::translateTernary(M4::HLSLConditionalExpression* expr)
 	{
 		translateExpression(expr->condition);
 		size_t pos = m_gen.Function.If();
@@ -755,7 +775,7 @@ namespace sd
 
 		m_gen.Function.SetAddress(goto_skip, m_gen.Function.GetCurrentAddress());
 	}
-	void HLSLTranslator::translateMemberAccess(M4::HLSLMemberAccess* expr)
+	void HLSLCompiler::translateMemberAccess(M4::HLSLMemberAccess* expr)
 	{
 		bool temp_isSet = m_isSet, temp_usePointer = m_usePointer;
 		m_isSet = false;
@@ -770,7 +790,7 @@ namespace sd
 			else m_gen.Function.GetProperty(expr->field);
 		}
 	}
-	void HLSLTranslator::translateMethodCall(M4::HLSLMethodCall* expr)
+	void HLSLCompiler::translateMethodCall(M4::HLSLMethodCall* expr)
 	{
 		bool temp_isSet = m_isSet, temp_usePointer = m_usePointer;
 		m_isSet = false;
@@ -787,14 +807,14 @@ namespace sd
 
 		m_gen.Function.CallReturnMethod(expr->function->name, expr->numArguments);
 	}
-	void HLSLTranslator::translateAttributes(M4::HLSLAttribute* attribute)
+	void HLSLCompiler::translateAttributes(M4::HLSLAttribute* attribute)
 	{
 		while (attribute != NULL)
 		{
 			attribute = attribute->nextAttribute;
 		}
 	}
-	void HLSLTranslator::translateArrayAccess(M4::HLSLArrayAccess* expr)
+	void HLSLCompiler::translateArrayAccess(M4::HLSLArrayAccess* expr)
 	{
 		translateExpression(expr->index);
 		translateExpression(expr->array);
@@ -804,11 +824,11 @@ namespace sd
 		else
 			m_gen.Function.GetArrayElement();
 	}
-	void HLSLTranslator::translateFunctionCall(M4::HLSLFunctionCall* expr)
+	void HLSLCompiler::translateFunctionCall(M4::HLSLFunctionCall* expr)
 	{
 
 		Function data = m_matchFunction(expr->function->name, expr->numArguments, expr->argument);
-		std::vector<HLSLTranslator::ExpressionType> paramTypes(expr->numArguments);
+		std::vector<HLSLCompiler::ExpressionType> paramTypes(expr->numArguments);
 		for (int i = 0; i < data.Arguments.size(); i++)
 			paramTypes[i] = m_convertType(data.Arguments[i].Type);
 
@@ -840,7 +860,7 @@ namespace sd
 		m_gen.Function.CallReturn(expr->function->name, expr->numArguments);
 	}
 
-	void HLSLTranslator::translateStatements(M4::HLSLStatement* statement)
+	void HLSLCompiler::translateStatements(M4::HLSLStatement* statement)
 	{
 		while (statement != NULL)
 		{
@@ -949,7 +969,7 @@ namespace sd
 		}
 	}
 
-	void HLSLTranslator::translateStructure(M4::HLSLStruct* structure)
+	void HLSLCompiler::translateStructure(M4::HLSLStruct* structure)
 	{
 		m_structures.push_back(Structure());
 		Structure& str = m_structures[m_structures.size() - 1];
@@ -967,7 +987,7 @@ namespace sd
 				m_gen.AddProperty(str.Name, fieldData.Name);
 
 				M4::HLSLType ftype = field->type;
-				HLSLTranslator::ExpressionType etype = m_convertType(ftype);
+				HLSLCompiler::ExpressionType etype = m_convertType(ftype);
 				fieldData.Type = etype.Name;
 				fieldData.Semantic = field->sv_semantic ? field->sv_semantic : (field->semantic ? field->semantic : "");
 				fieldData.IsArray = ftype.array;
@@ -977,7 +997,7 @@ namespace sd
 			field = field->nextField;
 		}
 	}
-	void HLSLTranslator::translateFunction(M4::HLSLFunction* func)
+	void HLSLCompiler::translateFunction(M4::HLSLFunction* func)
 	{
 		m_func.push_back(Function());
 		m_curFuncData = &m_func[m_func.size() - 1];
@@ -992,7 +1012,7 @@ namespace sd
 		std::vector<ag::Type> argTypes;
 		std::vector<std::string> argNames;
 		while (arg != NULL) {
-			HLSLTranslator::ExpressionType btype = m_convertType(arg->type);
+			HLSLCompiler::ExpressionType btype = m_convertType(arg->type);
 			argTypes.push_back(btype.Type);
 			argNames.push_back(btype.Name);
 			arg = arg->nextArgument;
@@ -1062,14 +1082,14 @@ namespace sd
 		m_curFuncData = nullptr;
 		m_currentFunction = "";
 	}
-	void HLSLTranslator::translateReturnStatement(M4::HLSLReturnStatement* ret)
+	void HLSLCompiler::translateReturnStatement(M4::HLSLReturnStatement* ret)
 	{
 		if (ret->expression != NULL) {
 			translateExpression(ret->expression);
 
 			if (!m_isImmediate) {
-				HLSLTranslator::ExpressionType rType = m_convertType(m_curFuncData->ReturnType);
-				HLSLTranslator::ExpressionType expType = m_convertType(ret->expression->expressionType);
+				HLSLCompiler::ExpressionType rType = m_convertType(m_curFuncData->ReturnType);
+				HLSLCompiler::ExpressionType expType = m_convertType(ret->expression->expressionType);
 
 				if (rType != expType)
 					m_generateConvert(rType);
@@ -1078,16 +1098,16 @@ namespace sd
 
 		m_gen.Function.Return();
 	}
-	void HLSLTranslator::translateBreakStatement(M4::HLSLBreakStatement* brk)
+	void HLSLCompiler::translateBreakStatement(M4::HLSLBreakStatement* brk)
 	{
 		if (m_breaks.size() > 0)
 			m_breaks.top().push_back(m_gen.Function.Goto());
 	}
-	void HLSLTranslator::translateContinueStatement(M4::HLSLContinueStatement* brk)
+	void HLSLCompiler::translateContinueStatement(M4::HLSLContinueStatement* brk)
 	{
 		m_gen.Function.SetAddress(m_gen.Function.Goto(), m_continueAddr.top());
 	}
-	void HLSLTranslator::translateIfStatement(M4::HLSLIfStatement* ifStmt)
+	void HLSLCompiler::translateIfStatement(M4::HLSLIfStatement* ifStmt)
 	{
 		translateExpression(ifStmt->condition);
 		size_t pos = m_gen.Function.If();
@@ -1097,7 +1117,7 @@ namespace sd
 		if (ifStmt->elseStatement)
 			translateStatements(ifStmt->elseStatement);
 	}
-	void HLSLTranslator::translateForStatement(M4::HLSLForStatement* forStmt)
+	void HLSLCompiler::translateForStatement(M4::HLSLForStatement* forStmt)
 	{
 		m_breaks.push(std::vector<size_t>());
 
@@ -1146,13 +1166,13 @@ namespace sd
 		m_breaks.pop();
 	}
 
-	void HLSLTranslator::translateDeclaration(M4::HLSLDeclaration* declr)
+	void HLSLCompiler::translateDeclaration(M4::HLSLDeclaration* declr)
 	{
 		bool isReadTextureType = M4::IsReadTextureType(declr->type);
 
 		// local
 		if (m_curFuncData != nullptr) {
-			HLSLTranslator::ExpressionType lType = m_convertType(declr->type);
+			HLSLCompiler::ExpressionType lType = m_convertType(declr->type);
 
 			m_locals[m_currentFunction].push_back(declr->name);
 			m_localTypes[m_currentFunction][std::string(declr->name)] = lType.Name;
@@ -1160,7 +1180,7 @@ namespace sd
 			if (declr->assignment) {
 				translateExpression(declr->assignment);
 
-				HLSLTranslator::ExpressionType rType = m_convertType(declr->assignment->expressionType);
+				HLSLCompiler::ExpressionType rType = m_convertType(declr->assignment->expressionType);
 				if (lType != rType)
 					m_generateConvert(lType);
 
@@ -1198,7 +1218,7 @@ namespace sd
 			if (type.flags & M4::HLSLTypeFlag_NoPerspective) var.NoPerspective = false;
 			if (type.flags & M4::HLSLTypeFlag_Sample) { }
 			
-			HLSLTranslator::ExpressionType expType = m_convertType(declr->type);
+			HLSLCompiler::ExpressionType expType = m_convertType(declr->type);
 			var.Type = expType.Name;
 
 			if (m_isTypeActuallyStruct(expType))

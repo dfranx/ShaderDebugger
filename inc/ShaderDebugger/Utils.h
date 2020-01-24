@@ -48,7 +48,6 @@ namespace sd
 	unsigned int AsUnsignedInteger(const bv_variable& var);
 	unsigned int AsBool(const bv_variable& var);
 
-	u8 GetVectorSizeFromName(const char* name);
 	bv_type GetVectorTypeFromName(const char* name);
 
 	void GetMatrixSizeFromName(const char* name, int* cols, int* rows);

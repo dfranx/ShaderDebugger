@@ -9,8 +9,9 @@ set(SOURCES
 	main.cpp
 	src/Utils.cpp
 	src/GLSLLibrary.cpp
-	src/GLSLTranslator.cpp
-	src/HLSLTranslator.cpp
+	src/GLSLCompiler.cpp
+	src/HLSLLibrary.cpp
+	src/HLSLCompiler.cpp
 	src/ShaderDebugger.cpp
 	src/Texture.cpp
 	

@@ -1,6 +1,6 @@
 #pragma once
 #include <hlslparser/HLSLTree.h>
-#include <ShaderDebugger/Translator.h>
+#include <ShaderDebugger/Compiler.h>
 
 #include <unordered_map>
 #include <string>
@@ -10,11 +10,11 @@
 namespace M4 { class Allocator; class Logger; class HLSLNode; }
 namespace sd
 {
-	class HLSLTranslator : public Translator
+	class HLSLCompiler : public Compiler
 	{
 	public:
-		HLSLTranslator();
-		~HLSLTranslator();
+		HLSLCompiler();
+		~HLSLCompiler();
 
 		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main");
 
@@ -75,7 +75,7 @@ namespace sd
 		ExpressionType m_convertType(const M4::HLSLBaseType& type, const char* userDefined = NULL);
 		ExpressionType m_convertType(const M4::HLSLType& type);
 		ExpressionType m_convertType(const std::string& type);
-		void m_generateConvert(ExpressionType etype);
+		void m_generateConvert(ExpressionType etype, int args = 1);
 		bool m_isTypeActuallyStruct(ExpressionType type);
 
 		Function m_matchFunction(const char* name, int argCount, M4::HLSLExpression* args);
@@ -84,6 +84,9 @@ namespace sd
 		
 		inline void m_exportLine(const M4::HLSLNode* node, bool force = false)
 		{
+			if (!node)
+				return;
+
 			if ((m_lastLineSaved != node->line || force) && m_curFuncData != nullptr) {
 				m_gen.Function.DebugLineNumber(node->line);
 				m_lastLineSaved = node->line;

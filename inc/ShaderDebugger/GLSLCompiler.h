@@ -8,11 +8,11 @@
 #include <vector>
 #include <stack>
 
-#include <ShaderDebugger/Translator.h>
+#include <ShaderDebugger/Compiler.h>
 
 namespace sd
 {
-	class GLSLTranslator : public Translator
+	class GLSLCompiler : public Compiler
 	{
 	public:
 		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main");

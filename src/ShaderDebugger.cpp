@@ -14,8 +14,9 @@ namespace sd
 		m_prog = nullptr;
 		m_library = nullptr;
 		m_stepper = nullptr;
-		m_transl = nullptr;
+		m_compiler = nullptr;
 		m_discarded = false;
+		m_immCompiler = nullptr;
 	}
 	ShaderDebugger::~ShaderDebugger()
 	{
@@ -23,8 +24,8 @@ namespace sd
 			bv_function_stepper_delete(m_stepper);
 		if (m_prog != nullptr)
 			bv_program_delete(m_prog);
-		if (m_transl != nullptr)
-			delete m_transl;
+		if (m_compiler != nullptr)
+			delete m_compiler;
 		if (m_library != nullptr) {
 			bv_library_delete(m_library);
 			m_library = nullptr;
@@ -113,13 +114,13 @@ namespace sd
 		std::string curFunc = GetCurrentFunction();
 		if (curFunc.size() == 0)
 			return std::vector<std::string>();
-		return m_transl->GetLocals(curFunc);
+		return m_compiler->GetLocals(curFunc);
 	}
 	bv_variable* ShaderDebugger::GetLocalValue(const std::string& varname)
 	{
 		bv_scope* scope = m_stepper->scope;
 		std::string curFunc = GetCurrentFunction();
-		const auto& locList = m_transl->GetLocals(curFunc);
+		const auto& locList = m_compiler->GetLocals(curFunc);
 		auto argList = m_getFunctionInfo(GetCurrentFunction()).Arguments;
 
 		for (u32 i = 0; i < argList.size(); i++)
@@ -254,42 +255,42 @@ namespace sd
 	}
 	bv_variable ShaderDebugger::Immediate(const std::string& src)
 	{
-		m_immTransl->ClearDefinitions();
+		m_immCompiler->ClearDefinitions();
 
 		// pass on the function definitions
-		const std::vector<sd::Function>& funcs = m_transl->GetFunctions();
+		const std::vector<sd::Function>& funcs = m_compiler->GetFunctions();
 		for (const auto& func : funcs)
 			if (func.Name != m_entry)
-				m_immTransl->AddFunctionDefinition(func);
+				m_immCompiler->AddFunctionDefinition(func);
 
 		// pass on the structure definitions
-		const std::vector<sd::Structure>& structs = m_transl->GetStructures();
+		const std::vector<sd::Structure>& structs = m_compiler->GetStructures();
 		for (const auto& str : structs)
-			m_immTransl->AddStructureDefinition(str);
+			m_immCompiler->AddStructureDefinition(str);
 
 		// pass on the global definitions
-		const std::vector<sd::Variable>& globals = m_transl->GetGlobals();
+		const std::vector<sd::Variable>& globals = m_compiler->GetGlobals();
 		for (const auto& glob : globals) {
-			m_immTransl->AddGlobalDefinition(glob);
-			m_immTransl->AddImmediateGlobalDefinition(glob);
+			m_immCompiler->AddGlobalDefinition(glob);
+			m_immCompiler->AddImmediateGlobalDefinition(glob);
 		}
 
 		// pass on the local variables
-		const std::vector<std::string>& locals = m_transl->GetLocals(GetCurrentFunction());
+		const std::vector<std::string>& locals = m_compiler->GetLocals(GetCurrentFunction());
 		unsigned int locIndex = 0;
 		for (const auto& loc : locals) {
 			sd::Variable locData;
 			locData.ID = globals.size() + locIndex;
 			locData.Name = loc;
-			locData.Type = m_transl->GetLocalType(GetCurrentFunction(), loc);
-			m_immTransl->AddGlobalDefinition(locData);
-			m_immTransl->AddImmediateGlobalDefinition(locData);
+			locData.Type = m_compiler->GetLocalType(GetCurrentFunction(), loc);
+			m_immCompiler->AddGlobalDefinition(locData);
+			m_immCompiler->AddImmediateGlobalDefinition(locData);
 
 			locIndex++;
 		}
 
-		bool done = m_immTransl->Parse(m_type, src, "immediate");
-		std::vector<uint8_t> bytecode = m_immTransl->GetBytecode();
+		bool done = m_immCompiler->Parse(m_type, src, "immediate");
+		std::vector<uint8_t> bytecode = m_immCompiler->GetBytecode();
 
 
 		if (done && m_bytecode.size() > 0) {
@@ -301,13 +302,13 @@ namespace sd
 				bv_program_add_function_pointer(immProg, m_prog->block->functions->names[i], m_prog->functions[i]);
 			
 			// property getter
-			immProg->property_getter = m_immTransl->PropertyGetter;
+			immProg->property_getter = m_immCompiler->PropertyGetter;
 
 			// copy libraries
 			bv_program_add_library(immProg, m_library);
 			
 			// copy all values
-			const std::vector<sd::Variable>& allVariables = m_immTransl->GetGlobals();
+			const std::vector<sd::Variable>& allVariables = m_immCompiler->GetGlobals();
 			for (const auto& glob : allVariables) {
 
 				bv_variable* globVal = GetLocalValue(glob.Name);
@@ -338,7 +339,7 @@ namespace sd
 
 	Function ShaderDebugger::m_getFunctionInfo(const std::string& fname)
 	{
-		const auto& funcs = m_transl->GetFunctions();
+		const auto& funcs = m_compiler->GetFunctions();
 		for (const auto& func : funcs) {
 			if (func.Name == fname)
 				return func;

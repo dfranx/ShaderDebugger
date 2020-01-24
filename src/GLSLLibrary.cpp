@@ -11,7 +11,7 @@
 
 namespace sd
 {
-	namespace Library
+	namespace GLSL
 	{
 		/*
 			TODO: 
@@ -25,6 +25,7 @@ namespace sd
 		*/
 
 		// helper functions:
+		// TODO: this could've been achieved with templates, bv_type vec_type, u8 components
 		bv_variable create_vec3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f))
 		{
 			bv_variable ret = bv_variable_create_object(bv_program_get_object_info(prog, "vec3"));
@@ -170,6 +171,7 @@ namespace sd
 			return ret;
 		}
 
+		// TODO: remove all other functions
 		bv_variable create_vec(bv_program* prog, bv_type type, u16 components)
 		{
 			if (components == 3) // 3D vector
@@ -208,6 +210,7 @@ namespace sd
 
 			return create_vec3(prog);
 		}
+
 		bv_type merge_type(bv_type type1, bv_type type2)
 		{
 			if (type1 == bv_type_float || type2 == bv_type_float)
@@ -293,7 +296,7 @@ namespace sd
 		}
 
 		/* swizzle */
-		bv_variable GLSLswizzle(bv_program* prog, bv_object* obj, const bv_string field)
+		bv_variable Swizzle(bv_program* prog, bv_object* obj, const bv_string field)
 		{
 			const char* rgba = "rgba\0";
 			const char* xyzw = "xyzw\0";
@@ -395,7 +398,7 @@ namespace sd
 		bv_variable lib_glsl_vec_constructor(bv_program* prog, bv_object* me, u8 count, bv_variable* args)
 		{
 			bv_type type = sd::GetVectorTypeFromName(me->type->name);
-			u8 size = sd::GetVectorSizeFromName(me->type->name);
+			u8 size = me->type->props.name_count;
 
 			if (count == 0) { // gvecX()
 				for (u16 i = 0; i < me->type->props.name_count; i++)
@@ -4335,7 +4338,7 @@ namespace sd
 			return mat;
 		}
 
-		bv_library* GLSL()
+		bv_library* Library()
 		{
 			bv_library* lib = bv_library_create();
 

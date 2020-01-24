@@ -1,4 +1,4 @@
-#include <ShaderDebugger/GLSLTranslator.h>
+#include <ShaderDebugger/GLSLCompiler.h>
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <string.h>
 
@@ -15,13 +15,13 @@ static const char *kTypes[] = {
 
 namespace sd
 {
-	bool GLSLTranslator::Parse(ShaderType type, const std::string& source, std::string entry)
+	bool GLSLCompiler::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
 		if (!m_isImmediate)
 			ClearDefinitions();
 		m_gen.Reset();
 
-		PropertyGetter = Library::GLSLswizzle;
+		PropertyGetter = GLSL::Swizzle;
 		m_lastLineSaved = -1;
 		m_isSet = false;
 		m_usePointer = false;
@@ -55,11 +55,11 @@ namespace sd
 		return true;
 	}
 	
-	void GLSLTranslator::ClearImmediate()
+	void GLSLCompiler::ClearImmediate()
 	{
 		
 	}
-	void GLSLTranslator::AddImmediateGlobalDefinition(Variable var)
+	void GLSLCompiler::AddImmediateGlobalDefinition(Variable var)
 	{
 		for (size_t i = 0; i < sizeof(kTypes) / sizeof(kTypes[0]); i++) {
 			if (strcmp(kTypes[i], var.Type.c_str()) == 0) {
@@ -74,7 +74,7 @@ namespace sd
 		m_immGlobals.push_back(std::make_pair(var.Name, std::make_pair((int)glsl::kKeyword_struct, var.Type.c_str())));
 	}
 
-	void GLSLTranslator::translateOperator(int op) {
+	void GLSLCompiler::translateOperator(int op) {
 		switch (op)
 		{
 		case glsl::kOperator_increment: m_gen.Function.Increment(); break;
@@ -106,32 +106,32 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateIntConstant(glsl::astIntConstant *expression) {
+	void GLSLCompiler::translateIntConstant(glsl::astIntConstant *expression) {
 		m_gen.Function.PushStack((int)expression->value);
 	}
 
-	void GLSLTranslator::translateUIntConstant(glsl::astUIntConstant *expression) {
+	void GLSLCompiler::translateUIntConstant(glsl::astUIntConstant *expression) {
 		m_gen.Function.PushStack((int)expression->value);
 	}
 
-	void GLSLTranslator::translateFloatConstant(glsl::astFloatConstant *expression) {
+	void GLSLCompiler::translateFloatConstant(glsl::astFloatConstant *expression) {
 		m_gen.Function.PushStack((float)expression->value);
 	}
 
-	void GLSLTranslator::translateDoubleConstant(glsl::astDoubleConstant *expression) {
+	void GLSLCompiler::translateDoubleConstant(glsl::astDoubleConstant *expression) {
 		m_gen.Function.PushStack((float)expression->value); // TODO: double?
 	}
 
-	void GLSLTranslator::translateBoolConstant(glsl::astBoolConstant *expression) {
+	void GLSLCompiler::translateBoolConstant(glsl::astBoolConstant *expression) {
 		m_gen.Function.PushStack((char)expression->value);
 	}
 
-	void GLSLTranslator::translateArraySize(const glsl::vector<glsl::astConstantExpression*> &arraySizes) {
+	void GLSLCompiler::translateArraySize(const glsl::vector<glsl::astConstantExpression*> &arraySizes) {
 		for (size_t i = 0; i < arraySizes.size(); i++)
 			translateExpression(arraySizes[i]);
 	}
 
-	void GLSLTranslator::translateStorage(int storage) {
+	void GLSLCompiler::translateStorage(int storage) {
 		switch (storage) {
 		case glsl::kConst: break;
 		case glsl::kIn: break;
@@ -144,7 +144,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateAuxiliary(int auxiliary) {
+	void GLSLCompiler::translateAuxiliary(int auxiliary) {
 		// TODO
 		switch (auxiliary) {
 		case glsl::kCentroid: break;
@@ -153,7 +153,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateMemory(int memory) {
+	void GLSLCompiler::translateMemory(int memory) {
 		// TODO
 		if (memory & glsl::kCoherent) {}
 		if (memory & glsl::kVolatile) {}
@@ -162,7 +162,7 @@ namespace sd
 		if (memory & glsl::kWriteOnly) {}
 	}
 
-	void GLSLTranslator::translatePrecision(int precision) {
+	void GLSLCompiler::translatePrecision(int precision) {
 		// TODO
 		switch (precision) {
 			case glsl::kLowp: break;
@@ -171,7 +171,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateGlobalVariable(glsl::astGlobalVariable *variable) {
+	void GLSLCompiler::translateGlobalVariable(glsl::astGlobalVariable *variable) {
 		m_globals.push_back(Variable());
 
 		Variable& var = m_globals[m_globals.size()-1];
@@ -240,7 +240,7 @@ namespace sd
 			m_initInMain[varData->name] = variable->initialValue;
 	}
 
-	void GLSLTranslator::translateVariableIdentifier(glsl::astVariableIdentifier *expression) {
+	void GLSLCompiler::translateVariableIdentifier(glsl::astVariableIdentifier *expression) {
 		glsl::astVariable* vdata = (glsl::astVariable*)expression->variable;
 		
 		bool found = false;
@@ -303,7 +303,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateFieldOrSwizzle(glsl::astFieldOrSwizzle *expression) {
+	void GLSLCompiler::translateFieldOrSwizzle(glsl::astFieldOrSwizzle *expression) {
 		bool temp_isSet = m_isSet, temp_usePointer = m_usePointer;
 		m_isSet = false;
 		m_usePointer = true;
@@ -318,7 +318,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateArraySubscript(glsl::astArraySubscript *expression) {
+	void GLSLCompiler::translateArraySubscript(glsl::astArraySubscript *expression) {
 		// first push index
 		translateExpression(expression->index);
 
@@ -376,11 +376,11 @@ namespace sd
 			m_gen.Function.GetArrayElement();
 	}
 
-	void GLSLTranslator::translateFunctionCall(glsl::astFunctionCall *expression) {
+	void GLSLCompiler::translateFunctionCall(glsl::astFunctionCall *expression) {
 		m_exportLine(expression);
 		
 		Function data = matchFunction(expression->name, expression->parameters);
-		std::vector<GLSLTranslator::ExpressionType> paramTypes(expression->parameters.size());
+		std::vector<GLSLCompiler::ExpressionType> paramTypes(expression->parameters.size());
 		for (int i = 0; i < data.Arguments.size(); i++)
 			paramTypes[i] = m_convertExprType(data.Arguments[i].Type);
 
@@ -407,7 +407,7 @@ namespace sd
 		m_gen.Function.CallReturn(expression->name, expression->parameters.size());
 	}
 
-	void GLSLTranslator::translateConstructorCall(glsl::astConstructorCall *expression) {
+	void GLSLCompiler::translateConstructorCall(glsl::astConstructorCall *expression) {
 		m_exportLine(expression);
 		
 		for (int i = expression->parameters.size()-1; i >= 0; i--)
@@ -430,7 +430,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateDeclarationVariable(glsl::astFunctionVariable *variable) {
+	void GLSLCompiler::translateDeclarationVariable(glsl::astFunctionVariable *variable) {
 		m_exportLine(variable);
 		
 		glsl::astVariable* vdata = (glsl::astVariable*)variable;
@@ -445,8 +445,8 @@ namespace sd
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
 
-			GLSLTranslator::ExpressionType lType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
-			GLSLTranslator::ExpressionType rType = evaluateExpressionType(variable->initialValue);
+			GLSLCompiler::ExpressionType lType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
+			GLSLCompiler::ExpressionType rType = evaluateExpressionType(variable->initialValue);
 			if (lType != rType)
 				generateConvert(lType);
 
@@ -478,7 +478,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translatePostIncrement(glsl::astPostIncrementExpression *expression) {
+	void GLSLCompiler::translatePostIncrement(glsl::astPostIncrementExpression *expression) {
 		m_exportLine(expression);
 		translateExpression(expression->operand);
 
@@ -489,7 +489,7 @@ namespace sd
 		m_usePointer = false;
 	}
 
-	void GLSLTranslator::translatePostDecrement(glsl::astPostDecrementExpression *expression) {
+	void GLSLCompiler::translatePostDecrement(glsl::astPostDecrementExpression *expression) {
 		m_exportLine(expression);
 		translateExpression(expression->operand);
 
@@ -500,27 +500,27 @@ namespace sd
 		m_usePointer = false;
 	}
 
-	void GLSLTranslator::translateUnaryMinus(glsl::astUnaryMinusExpression *expression) {
+	void GLSLCompiler::translateUnaryMinus(glsl::astUnaryMinusExpression *expression) {
 		translateExpression(expression->operand);
 		m_gen.Function.Negate();
 	}
 
-	void GLSLTranslator::translateUnaryPlus(glsl::astUnaryPlusExpression *expression) {
+	void GLSLCompiler::translateUnaryPlus(glsl::astUnaryPlusExpression *expression) {
 		// TODO?
 		translateExpression(expression->operand);
 	}
 
-	void GLSLTranslator::translateUnaryBitNot(glsl::astUnaryBitNotExpression *expression) {
+	void GLSLCompiler::translateUnaryBitNot(glsl::astUnaryBitNotExpression *expression) {
 		translateExpression(expression->operand);
 		m_gen.Function.BitNot();
 	}
 
-	void GLSLTranslator::translateUnaryLogicalNot(glsl::astUnaryLogicalNotExpression *expression) {
+	void GLSLCompiler::translateUnaryLogicalNot(glsl::astUnaryLogicalNotExpression *expression) {
 		translateExpression(expression->operand);
 		m_gen.Function.Not();
 	}
 
-	void GLSLTranslator::translatePrefixIncrement(glsl::astPrefixIncrementExpression *expression) {
+	void GLSLCompiler::translatePrefixIncrement(glsl::astPrefixIncrementExpression *expression) {
 		m_exportLine(expression);
 		
 		m_usePointer = true;
@@ -532,7 +532,7 @@ namespace sd
 		translateExpression(expression->operand);
 	}
 
-	void GLSLTranslator::translatePrefixDecrement(glsl::astPrefixDecrementExpression *expression) {
+	void GLSLCompiler::translatePrefixDecrement(glsl::astPrefixDecrementExpression *expression) {
 		m_exportLine(expression);
 		
 		m_usePointer = true;
@@ -544,11 +544,11 @@ namespace sd
 		translateExpression(expression->operand);
 	}
 
-	void GLSLTranslator::translateAssign(glsl::astAssignmentExpression *expression) {
+	void GLSLCompiler::translateAssign(glsl::astAssignmentExpression *expression) {
 		m_exportLine(expression);
 
-		GLSLTranslator::ExpressionType lType = evaluateExpressionType(expression->operand1);
-		GLSLTranslator::ExpressionType rType = evaluateExpressionType(expression->operand2);
+		GLSLCompiler::ExpressionType lType = evaluateExpressionType(expression->operand1);
+		GLSLCompiler::ExpressionType rType = evaluateExpressionType(expression->operand2);
 
 		if (expression->assignment != glsl::kOperator_assign) {// push the lhs to the stack too if we are using some +=, -=, etc... operator
 			translateExpression(expression->operand1);
@@ -581,7 +581,7 @@ namespace sd
 		else if (expression->assignment == glsl::kOperator_bit_xor_assign)
 			m_gen.Function.BitOr();
 
-		GLSLTranslator::ExpressionType lhsType = evaluateExpressionType(expression->operand1);
+		GLSLCompiler::ExpressionType lhsType = evaluateExpressionType(expression->operand1);
 
 		if (lhsType != evaluateExpressionType(expression->operand2))
 			generateConvert(lhsType); // TODO: only cast when typeof(lhs) != typeof(rhs)
@@ -591,14 +591,14 @@ namespace sd
 		m_isSet = false;
 	}
 
-	Function GLSLTranslator::matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params)
+	Function GLSLCompiler::matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params)
 	{
 		Function ret;
 		ret.Name = "";
 
 		int match_args = -1;
 
-		std::vector<GLSLTranslator::ExpressionType> paramTypes(params.size());
+		std::vector<GLSLCompiler::ExpressionType> paramTypes(params.size());
 		for (int i = 0; i < paramTypes.size(); i++)
 			paramTypes[i] = evaluateExpressionType(params[i]);
 
@@ -640,7 +640,7 @@ namespace sd
 	}
 
 
-	void GLSLTranslator::generateConvert(GLSLTranslator::ExpressionType etype)
+	void GLSLCompiler::generateConvert(GLSLCompiler::ExpressionType etype)
 	{
 		if (etype.Type == ag::Type::Object) {
 			// TODO: ?
@@ -653,19 +653,19 @@ namespace sd
 				m_gen.Function.NewObjectByName(etype.Name, 1); // example: ivec3(vec3())
 		}
 	}
-	GLSLTranslator::ExpressionType GLSLTranslator::evaluateExpressionType(glsl::astExpression* expr)
+	GLSLCompiler::ExpressionType GLSLCompiler::evaluateExpressionType(glsl::astExpression* expr)
 	{
 		switch (expr->type) {
 		case glsl::astExpression::kIntConstant:
-			return GLSLTranslator::ExpressionType("int", ag::Type::Int, 1, 1);
+			return GLSLCompiler::ExpressionType("int", ag::Type::Int, 1, 1);
 		case glsl::astExpression::kUIntConstant:
-			return GLSLTranslator::ExpressionType("uint", ag::Type::UInt, 1, 1);
+			return GLSLCompiler::ExpressionType("uint", ag::Type::UInt, 1, 1);
 		case glsl::astExpression::kFloatConstant:
-			return GLSLTranslator::ExpressionType("float", ag::Type::Float, 1, 1);
+			return GLSLCompiler::ExpressionType("float", ag::Type::Float, 1, 1);
 		case glsl::astExpression::kDoubleConstant:
-			return GLSLTranslator::ExpressionType("double", ag::Type::Float, 1, 1);
+			return GLSLCompiler::ExpressionType("double", ag::Type::Float, 1, 1);
 		case glsl::astExpression::kBoolConstant:
-			return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
 		case glsl::astExpression::kFunctionCall: {
 			glsl::astFunctionCall* func = (glsl::astFunctionCall*)expr;
 			Function data = matchFunction(func->name, func->parameters);
@@ -720,8 +720,8 @@ namespace sd
 		} break;
 		case glsl::astExpression::kOperation: {
 			glsl::astOperationExpression* opdata = (glsl::astOperationExpression*)expr;
-			GLSLTranslator::ExpressionType type1 = evaluateExpressionType(opdata->operand1);
-			GLSLTranslator::ExpressionType type2 = evaluateExpressionType(opdata->operand2);
+			GLSLCompiler::ExpressionType type1 = evaluateExpressionType(opdata->operand1);
+			GLSLCompiler::ExpressionType type2 = evaluateExpressionType(opdata->operand2);
 
 			return m_mergeExprType(opdata->operation, type1, type2);
 		} break;
@@ -742,7 +742,7 @@ namespace sd
 		case glsl::astExpression::kFieldOrSwizzle:
 		{
 			glsl::astFieldOrSwizzle* field = (glsl::astFieldOrSwizzle*)expr;
-			GLSLTranslator::ExpressionType structBType = evaluateExpressionType(field->operand);
+			GLSLCompiler::ExpressionType structBType = evaluateExpressionType(field->operand);
 
 			if (structBType.Type == ag::Type::Object) {
 				// user defined structure
@@ -764,7 +764,7 @@ namespace sd
 		case glsl::astExpression::kArraySubscript:
 		{
 			glsl::astArraySubscript* arr = (glsl::astArraySubscript*)expr;
-			GLSLTranslator::ExpressionType operandType = evaluateExpressionType(arr->operand);
+			GLSLCompiler::ExpressionType operandType = evaluateExpressionType(arr->operand);
 
 			// TODO: matrices & arrays (?)
 
@@ -794,10 +794,10 @@ namespace sd
 		} break;
 		}
 
-		return GLSLTranslator::ExpressionType();
+		return GLSLCompiler::ExpressionType();
 	}
 
-	GLSLTranslator::ExpressionType GLSLTranslator::m_convertExprType(const std::string& str)
+	GLSLCompiler::ExpressionType GLSLCompiler::m_convertExprType(const std::string& str)
 	{
 		static const std::vector<std::string> floatStructs = {
 			KEYWORD(mat2)
@@ -943,14 +943,14 @@ namespace sd
 
 		return ExpressionType(str, ag::Type::Object, 1, 1);
 	}
-	GLSLTranslator::ExpressionType GLSLTranslator::m_mergeExprType(int op, const GLSLTranslator::ExpressionType& left, const GLSLTranslator::ExpressionType& right)
+	GLSLCompiler::ExpressionType GLSLCompiler::m_mergeExprType(int op, const GLSLCompiler::ExpressionType& left, const GLSLCompiler::ExpressionType& right)
 	{
 		if (left.Type == ag::Type::Object)
 			return left;
 		else if (right.Type == ag::Type::Object)
 			return right;
 		else if (right.Type == ag::Type::Void || left.Type == ag::Type::Void)
-			return GLSLTranslator::ExpressionType("void", ag::Type::Void, 1, 1);
+			return GLSLCompiler::ExpressionType("void", ag::Type::Void, 1, 1);
 		else {
 			int compLeft = left.Columns * left.Rows;
 			int compRight = right.Columns * right.Rows;
@@ -974,7 +974,7 @@ namespace sd
 							else
 								newName += std::to_string(cols) + "x" + std::to_string(rows);
 
-							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+							return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 						}
 						// matrix * vector
 						else if (right.Columns != 1) {
@@ -992,7 +992,7 @@ namespace sd
 							else if (newType == ag::Type::UChar)
 								newName = "b" + newName;
 
-							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+							return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 						}
 						// matrix * scalar
 						else {
@@ -1007,7 +1007,7 @@ namespace sd
 							else
 								newName += std::to_string(cols) + "x" + std::to_string(rows);
 
-							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+							return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 						}
 					}
 					// scalar * matrix
@@ -1023,7 +1023,7 @@ namespace sd
 						else
 							newName += std::to_string(cols) + "x" + std::to_string(rows);
 
-						return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 					}
 					// vector * ...
 					else if (left.Columns != 1) {
@@ -1043,7 +1043,7 @@ namespace sd
 							else if (newType == ag::Type::UChar)
 								newName = "b" + newName;
 
-							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+							return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 						}
 						// vector * scalar
 						else {
@@ -1061,7 +1061,7 @@ namespace sd
 							else if (newType == ag::Type::UChar)
 								newName = "b" + newName;
 
-							return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+							return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 						}
 					}
 					// scalar * vector
@@ -1080,20 +1080,20 @@ namespace sd
 						else if (newType == ag::Type::UChar)
 							newName = "b" + newName;
 
-						return GLSLTranslator::ExpressionType(newName, newType, cols, rows);
+						return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 					}
 				}
 
 			} break;
-			case glsl::kOperator_less: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
-			case glsl::kOperator_greater: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
-			case glsl::kOperator_less_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
-			case glsl::kOperator_greater_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
-			case glsl::kOperator_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
-			case glsl::kOperator_not_equal: return GLSLTranslator::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_less: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_greater: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_less_equal: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_greater_equal: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_equal: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
+			case glsl::kOperator_not_equal: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
 			default: {
-				GLSLTranslator::ExpressionType big = left;
-				GLSLTranslator::ExpressionType small = right;
+				GLSLCompiler::ExpressionType big = left;
+				GLSLCompiler::ExpressionType small = right;
 
 				if (compRight > compLeft) {
 					big = right;
@@ -1134,14 +1134,14 @@ namespace sd
 						newName = "bool";
 				}
 
-				return GLSLTranslator::ExpressionType(newName, newType, big.Columns, big.Rows);
+				return GLSLCompiler::ExpressionType(newName, newType, big.Columns, big.Rows);
 			} break;
 			}
 		}
 
-		return GLSLTranslator::ExpressionType("void", ag::Type::Void, 1, 1);
+		return GLSLCompiler::ExpressionType("void", ag::Type::Void, 1, 1);
 	}
-	ag::Type GLSLTranslator::m_mergeBaseType(ag::Type type1, ag::Type type2)
+	ag::Type GLSLCompiler::m_mergeBaseType(ag::Type type1, ag::Type type2)
 	{
 		if (type1 == ag::Type::Float || type2 == ag::Type::Float)
 			return ag::Type::Float;
@@ -1161,7 +1161,7 @@ namespace sd
 		return type1;
 	}
 
-	ag::Type GLSLTranslator::m_convertBaseType(const std::string& str)
+	ag::Type GLSLCompiler::m_convertBaseType(const std::string& str)
 	{
 		if (str == "float") return ag::Type::Float;
 		if (str == "int") return ag::Type::Int;
@@ -1175,16 +1175,16 @@ namespace sd
 	}
 
 
-	void GLSLTranslator::translateSequence(glsl::astSequenceExpression *expression) {
+	void GLSLCompiler::translateSequence(glsl::astSequenceExpression *expression) {
 		m_exportLine(expression);
 		
 		translateExpression(expression->operand1);
 		translateExpression(expression->operand2);
 	}
 
-	void GLSLTranslator::translateOperation(glsl::astOperationExpression *expression) {
-		GLSLTranslator::ExpressionType lType = evaluateExpressionType(expression->operand1);
-		GLSLTranslator::ExpressionType rType = evaluateExpressionType(expression->operand2);
+	void GLSLCompiler::translateOperation(glsl::astOperationExpression *expression) {
+		GLSLCompiler::ExpressionType lType = evaluateExpressionType(expression->operand1);
+		GLSLCompiler::ExpressionType rType = evaluateExpressionType(expression->operand2);
 
 		translateExpression(expression->operand1);
 		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
@@ -1197,7 +1197,7 @@ namespace sd
 		translateOperator(expression->operation);
 	}
 
-	void GLSLTranslator::translateTernary(glsl::astTernaryExpression *expression) {
+	void GLSLCompiler::translateTernary(glsl::astTernaryExpression *expression) {
 		m_exportLine(expression);
 		
 		translateExpression(expression->condition);
@@ -1212,7 +1212,7 @@ namespace sd
 		m_gen.Function.SetAddress(goto_skip, m_gen.Function.GetCurrentAddress());
 	}
 
-	void GLSLTranslator::translateExpression(glsl::astExpression *expression) {
+	void GLSLCompiler::translateExpression(glsl::astExpression *expression) {
 		switch (expression->type) {
 		case glsl::astExpression::kIntConstant:
 			return translateIntConstant((glsl::astIntConstant*)expression);
@@ -1261,7 +1261,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateCompoundStatement(glsl::astCompoundStatement *statement) {
+	void GLSLCompiler::translateCompoundStatement(glsl::astCompoundStatement *statement) {
 		// m_gen.Function.ScopeStart(); // TODO: it doesn't work with these?
 		m_exportLine(statement);
 		
@@ -1273,16 +1273,16 @@ namespace sd
 		// m_gen.Function.ScopeEnd();
 	}
 
-	void GLSLTranslator::translateDeclarationStatement(glsl::astDeclarationStatement *statement) {
+	void GLSLCompiler::translateDeclarationStatement(glsl::astDeclarationStatement *statement) {
 		for (size_t i = 0; i < statement->variables.size(); i++)
 			translateDeclarationVariable(statement->variables[i]);
 	}
 
-	void GLSLTranslator::translateExpressionStatement(glsl::astExpressionStatement *statement) {
+	void GLSLCompiler::translateExpressionStatement(glsl::astExpressionStatement *statement) {
 		translateExpression(statement->expression);
 	}
 
-	void GLSLTranslator::translateIfStetement(glsl::astIfStatement *statement) {
+	void GLSLCompiler::translateIfStetement(glsl::astIfStatement *statement) {
 		m_exportLine(statement);
 		
 		translateExpression(statement->condition);
@@ -1294,7 +1294,7 @@ namespace sd
 			translateStatement(statement->elseStatement);
 	}
 
-	void GLSLTranslator::translateSwitchStatement(glsl::astSwitchStatement *statement) {
+	void GLSLCompiler::translateSwitchStatement(glsl::astSwitchStatement *statement) {
 		m_exportLine(statement);
 		
 		m_breaks.push(std::vector<size_t>());
@@ -1325,7 +1325,7 @@ namespace sd
 		m_breaks.pop();
 	}
 
-	void GLSLTranslator::translateCaseLabelStatement(glsl::astCaseLabelStatement *statement) {
+	void GLSLCompiler::translateCaseLabelStatement(glsl::astCaseLabelStatement *statement) {
 		m_exportLine(statement);
 		
 		m_caseIfDefault = statement->isDefault;
@@ -1337,7 +1337,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateWhileStatement(glsl::astWhileStatement *statement) {
+	void GLSLCompiler::translateWhileStatement(glsl::astWhileStatement *statement) {
 		m_exportLine(statement);
 		
 		size_t rewind_adr = m_gen.Function.GetCurrentAddress();
@@ -1369,7 +1369,7 @@ namespace sd
 		m_breaks.pop();
 	}
 
-	void GLSLTranslator::translateDoStatement(glsl::astDoStatement *statement) {
+	void GLSLCompiler::translateDoStatement(glsl::astDoStatement *statement) {
 		m_exportLine(statement);
 		
 		size_t rewind_adr = m_gen.Function.GetCurrentAddress();
@@ -1392,7 +1392,7 @@ namespace sd
 		m_breaks.pop();
 	}
 
-	void GLSLTranslator::translateForStatement(glsl::astForStatement *statement) {
+	void GLSLCompiler::translateForStatement(glsl::astForStatement *statement) {
 		m_breaks.push(std::vector<size_t>());
 
 		if (statement->init) {
@@ -1449,23 +1449,23 @@ namespace sd
 		m_breaks.pop();
 	}
 
-	void GLSLTranslator::translateContinueStatement() {
+	void GLSLCompiler::translateContinueStatement() {
 		m_gen.Function.SetAddress(m_gen.Function.Goto(), m_continueAddr.top());
 	}
 
-	void GLSLTranslator::translateBreakStatement() {
+	void GLSLCompiler::translateBreakStatement() {
 		if (m_breaks.size() > 0)
 			m_breaks.top().push_back(m_gen.Function.Goto());
 	}
 
-	void GLSLTranslator::translateReturnStatement(glsl::astReturnStatement *statement) {
+	void GLSLCompiler::translateReturnStatement(glsl::astReturnStatement *statement) {
 		m_exportLine(statement);
 		
 		if (statement->expression) {
 			translateExpression(statement->expression);
 
 			if (!m_isImmediate) {
-				GLSLTranslator::ExpressionType rType = m_convertExprType(m_curFuncData->ReturnType);
+				GLSLCompiler::ExpressionType rType = m_convertExprType(m_curFuncData->ReturnType);
 				generateConvert(rType);
 			}
 		}
@@ -1473,12 +1473,12 @@ namespace sd
 		m_gen.Function.Return();
 	}
 
-	void GLSLTranslator::translateDiscardStatement() {
+	void GLSLCompiler::translateDiscardStatement() {
 		m_gen.Function.Call("$$discard", 0);
 		m_gen.Function.Return();
 	}
 
-	void GLSLTranslator::translateStatement(glsl::astStatement *statement) {
+	void GLSLCompiler::translateStatement(glsl::astStatement *statement) {
 		switch (statement->type) {
 		case glsl::astStatement::kCompound:
 			return translateCompoundStatement((glsl::astCompoundStatement*)statement);
@@ -1513,7 +1513,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translateFunction(glsl::astFunction *function) {
+	void GLSLCompiler::translateFunction(glsl::astFunction *function) {
 		if (function->isPrototype)
 			return; // only generate bytecode for "real deals"?
 		
@@ -1629,7 +1629,7 @@ namespace sd
 		m_currentFunction = "";
 	}
 
-	void GLSLTranslator::translateStructure(glsl::astStruct *structure) {
+	void GLSLCompiler::translateStructure(glsl::astStruct *structure) {
 		m_structures.push_back(Structure());
 		Structure& str = m_structures[m_structures.size()-1];
 
@@ -1657,7 +1657,7 @@ namespace sd
 		}
 	}
 
-	void GLSLTranslator::translate(glsl::astTU *tu) {
+	void GLSLCompiler::translate(glsl::astTU *tu) {
 		for (size_t i = 0; i < tu->structures.size(); i++)
 			translateStructure(tu->structures[i]);
 		for (size_t i = 0; i < tu->globals.size(); i++)
@@ -1666,7 +1666,7 @@ namespace sd
 			translateFunction(tu->functions[i]);
 	}
 
-	void GLSLTranslator::m_buildFuncArgPtrs()
+	void GLSLCompiler::m_buildFuncArgPtrs()
 	{
 		m_builtInFuncsPtrs.clear();
 		m_builtInFuncsPtrs["modf"].push_back(1); // second argument is out

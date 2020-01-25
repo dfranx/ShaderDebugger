@@ -39,6 +39,7 @@ namespace sd
 			m_args = args;
 			m_prog = nullptr;
 			m_stepper = nullptr;
+			m_discarded = false;
 
 			m_type = stage;
 

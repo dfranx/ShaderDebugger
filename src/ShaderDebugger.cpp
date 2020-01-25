@@ -17,6 +17,8 @@ namespace sd
 		m_compiler = nullptr;
 		m_discarded = false;
 		m_immCompiler = nullptr;
+		m_args = nullptr;
+		m_type = sd::ShaderType::Vertex;
 	}
 	ShaderDebugger::~ShaderDebugger()
 	{
@@ -306,6 +308,7 @@ namespace sd
 
 			// copy libraries
 			bv_program_add_library(immProg, m_library);
+			immProg->user_data = m_prog->user_data;
 			
 			// copy all values
 			const std::vector<sd::Variable>& allVariables = m_immCompiler->GetGlobals();

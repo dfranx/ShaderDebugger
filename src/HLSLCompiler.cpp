@@ -252,9 +252,8 @@ namespace sd
 
 	HLSLCompiler::HLSLCompiler()
 	{
-		m_entryName                     = NULL;
-		m_target                        = ShaderType::Pixel;
-		m_isInsideBuffer                = false;
+		m_language = Compiler::Language::HLSL;
+		m_isInsideBuffer = false;
 		m_currentFunction = "";
 		m_entryFunction = "";
 		m_isSet = m_usePointer = false;

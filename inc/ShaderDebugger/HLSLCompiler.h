@@ -93,10 +93,7 @@ namespace sd
 			}
 		}
 
-		const char*     m_entryName;
-		ShaderType      m_target;
-
-		bool            m_isInsideBuffer;
+		bool m_isInsideBuffer;
 
 		std::vector<std::pair<std::string, std::pair<M4::HLSLType, std::string>>> m_immGlobals;
 

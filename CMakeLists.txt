@@ -12,6 +12,7 @@ set(SOURCES
 	src/GLSLCompiler.cpp
 	src/HLSLLibrary.cpp
 	src/HLSLCompiler.cpp
+	src/CommonLibrary.cpp
 	src/ShaderDebugger.cpp
 	src/Texture.cpp
 	

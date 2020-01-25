@@ -15,6 +15,8 @@ namespace sd
 	class GLSLCompiler : public Compiler
 	{
 	public:
+		GLSLCompiler();
+
 		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main");
 
 		virtual void ClearImmediate();
@@ -106,6 +108,9 @@ namespace sd
 		template<typename T>
 		inline void m_exportLine(glsl::astNode<T>* node, bool force = false)
 		{
+			if (!node)
+				return;
+
 			if (m_lastLineSaved != node->line || force) {
 				m_gen.Function.DebugLineNumber(node->line);
 				m_lastLineSaved = node->line;

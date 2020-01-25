@@ -14,7 +14,16 @@ static const std::vector<const char*> floatMats = {
 	"mat3x4",
 	"mat4x2",
 	"mat4x3",
-	"mat4x4"
+	"mat4x4",
+	"float2x2",
+	"float3x2",
+	"float4x2",
+	"float2x3",
+	"float3x3",
+	"float4x3",
+	"float2x4",
+	"float3x4",
+	"float4x4"
 };
 static const std::vector<const char*> doubleMats = {
 	"dmat2",
@@ -28,7 +37,7 @@ static const std::vector<const char*> doubleMats = {
 	"dmat3x4",
 	"dmat4x2",
 	"dmat4x3",
-	"dmat4x4"
+	"dmat4x4",
 };
 
 namespace sd
@@ -87,9 +96,15 @@ namespace sd
 			2,3,4,
 			2,2,2,
 			3,3,3,
+			4,4,4,
+			2,2,2,
+			3,3,3,
 			4,4,4
 		};
 		static const std::vector<int> row_list = {
+			2,3,4,
+			2,3,4,
+			2,3,4,
 			2,3,4,
 			2,3,4,
 			2,3,4,
@@ -98,7 +113,7 @@ namespace sd
 		*cols = 0;
 		*rows = 0;
 		for (int i = 0; i < floatMats.size(); i++)
-			if (strcmp(floatMats[i], name) == 0 || strcmp(doubleMats[i], name) == 0) {
+			if (strcmp(floatMats[i], name) == 0 || (i < doubleMats.size() && strcmp(doubleMats[i], name) == 0)) {
 				*cols = col_list[i];
 				*rows = row_list[i];
 				break;
@@ -107,9 +122,46 @@ namespace sd
 	bv_type GetMatrixTypeFromName(const char* name)
 	{
 		for (int i = 0; i < floatMats.size(); i++)
-			if (strcmp(floatMats[i], name) == 0 || strcmp(doubleMats[i], name) == 0)
+			if (strcmp(floatMats[i], name) == 0 || (i < doubleMats.size() && strcmp(doubleMats[i], name) == 0))
 				return bv_type_float;
 		
 		return bv_type_void;
+	}
+
+	bool IsBasicTexture(const char* name)
+	{
+		static const std::vector<const char*> names = {
+			"Texture1D", "Texture2D", "Texture3D",
+			"isampler1D", "usampler1D", "sampler1D",
+			"isampler2D", "usampler2D", "sampler2D",
+			"isampler3D", "usampler3D", "sampler3D"
+		};
+		for (u16 i = 0; i < names.size(); i++)
+			if (strcmp(names[i], name) == 0)
+				return 1;
+		return 0;
+	}
+	u8 GetTextureDimension(const char* name)
+	{
+		static const std::vector<const char*> names = {
+			"Texture1D", "Texture2D", "Texture3D",
+			"sampler1D", "sampler2D", "sampler3D",
+			"isampler1D", "isampler2D", "isampler3D",
+			"usampler1D", "usampler2D", "usampler3D"
+		};
+		for (u16 i = 0; i < names.size(); i++)
+			if (strcmp(names[i], name) == 0)
+				return (i % 3) + 1;
+		return 0;
+	}
+	
+	sd::Matrix* CopyMatrixData(sd::Matrix* mat)
+	{
+		sd::Matrix* ret = new sd::Matrix();
+		ret->Columns = mat->Columns;
+		ret->Rows = mat->Rows;
+		ret->Type = mat->Type;
+		ret->Data = mat->Data;
+		return ret;
 	}
 }

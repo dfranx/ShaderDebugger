@@ -15,6 +15,20 @@ static const char *kTypes[] = {
 
 namespace sd
 {
+	GLSLCompiler::GLSLCompiler()
+	{
+		m_language = Compiler::Language::GLSL;
+		
+		m_lastLineSaved = -1;
+		m_currentFunction = m_entryFunction = "";
+		m_curFuncData = nullptr;
+
+		m_isSet = m_usePointer = false;
+		m_caseIfDefault = false;
+		m_caseIfAddr = 0;
+		m_writeIndexDepth = false;
+		m_indexDepth = 0;
+	}
 	bool GLSLCompiler::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
 		if (!m_isImmediate)

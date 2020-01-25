@@ -41,7 +41,16 @@ namespace sd
 
 		bv_object_get_property_ext PropertyGetter;
 
+		enum class Language
+		{
+			GLSL,
+			HLSL,
+			Custom
+		};
+		inline Language GetLanguage() { return m_language; }
+
 	protected:
+		Language m_language;
 		bool m_isImmediate;
 		ag::Generator m_gen;
 		std::vector<Variable> m_globals;

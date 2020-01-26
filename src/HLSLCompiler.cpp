@@ -1111,10 +1111,13 @@ namespace sd
 		translateExpression(ifStmt->condition);
 		size_t pos = m_gen.Function.If();
 		translateStatements(ifStmt->statement);
+		size_t goto_ref = m_gen.Function.Goto();
 		m_gen.Function.SetAddress(pos, m_gen.Function.GetCurrentAddress());
 
 		if (ifStmt->elseStatement)
 			translateStatements(ifStmt->elseStatement);
+
+		m_gen.Function.SetAddress(goto_ref, m_gen.Function.GetCurrentAddress());
 	}
 	void HLSLCompiler::translateForStatement(M4::HLSLForStatement* forStmt)
 	{

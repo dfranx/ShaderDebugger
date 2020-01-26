@@ -2,13 +2,6 @@
 
 namespace sd
 {
-	bv_variable DiscardFunction(bv_program* prog, u8 count, bv_variable* args)
-	{
-		ShaderDebugger* dbgr = (ShaderDebugger*)prog->user_data;
-		dbgr->SetDiscarded(true);
-		return bv_variable_create_void();
-	}
-
 	ShaderDebugger::ShaderDebugger()
 	{
 		m_prog = nullptr;

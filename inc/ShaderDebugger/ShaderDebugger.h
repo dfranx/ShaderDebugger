@@ -2,6 +2,7 @@
 #include <ShaderDebugger/Compiler.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Breakpoint.h>
+#include <ShaderDebugger/CommonLibrary.h>
 #include <glm/glm.hpp>
 
 #include <fstream>
@@ -12,8 +13,6 @@ extern "C" {
 
 namespace sd
 {
-	bv_variable DiscardFunction(bv_program* prog, u8 count, bv_variable* args);
-
 	class ShaderDebugger
 	{
 	public:
@@ -52,7 +51,7 @@ namespace sd
 					return false; // invalid bytecode
 
 				m_prog->user_data = (void*)this;
-				bv_program_add_function(m_prog, "$$discard", DiscardFunction);
+				bv_program_add_function(m_prog, "$$discard", Common::Discard);
 
 				m_prog->property_getter = m_compiler->PropertyGetter;
 					
@@ -101,7 +100,14 @@ namespace sd
 
 		bv_variable* GetValue(const std::string& gvarname);
 
-		inline void SetDiscarded(bool d) { m_discarded = d; }
+		inline void SetDiscarded(bool d) { 
+			m_discarded = d;
+
+			if (d) {
+				bv_function_stepper_abort(m_stepper);
+				bv_program_abort(m_prog);
+			}
+		}
 		inline bool IsDiscarded() { return m_discarded; }
 
 	private:

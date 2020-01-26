@@ -11,6 +11,8 @@ namespace sd
 {
 	namespace Common
 	{
+		bv_variable Discard(bv_program* prog, u8 count, bv_variable* args);
+
 		bv_variable create_float3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f));
 		bv_variable create_int3(bv_program* prog, glm::ivec3 val = glm::ivec3(0));
 		bv_variable create_uint3(bv_program* prog, glm::uvec3 val = glm::uvec3(0u));
@@ -29,7 +31,7 @@ namespace sd
 		bv_variable create_vec(bv_program* prog, bv_type type, u16 components);
 		bv_variable create_mat(bv_program* prog, const char* name, sd::Matrix* mat);
 
-		bv_type lib_merge_type(bv_type type1, bv_type type2);
+		bv_type merge_type(bv_type type1, bv_type type2);
 
 		/* vectors and operators */
 		bv_variable lib_common_vec_constructor(bv_program* prog, bv_object* me, u8 count, bv_variable* args);
@@ -119,6 +121,15 @@ namespace sd
 		// matrix
 		bv_variable lib_common_determinant(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_transpose(bv_program* prog, u8 count, bv_variable* args);
+
+		// integer
+		bv_variable lib_common_bitCount(bv_program* prog, u8 count, bv_variable* args);
+		bv_variable lib_common_findLSB(bv_program* prog, u8 count, bv_variable* args);
+		bv_variable lib_common_findMSB(bv_program* prog, u8 count, bv_variable* args);
+
+		// floating point
+		bv_variable lib_common_frexp(bv_program* prog, u8 count, bv_variable* args);
+		bv_variable lib_common_ldexp(bv_program* prog, u8 count, bv_variable* args);
 
 		/* helper functions to create vector & matrix definitions */
 		bv_object_info* lib_add_vec(bv_library* lib, const char* name, u8 comp, u8 logNot = 0);

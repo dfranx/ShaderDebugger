@@ -1302,10 +1302,13 @@ namespace sd
 		translateExpression(statement->condition);
 		size_t pos = m_gen.Function.If();
 		translateStatement(statement->thenStatement);
+		size_t goto_ref = m_gen.Function.Goto();
 		m_gen.Function.SetAddress(pos, m_gen.Function.GetCurrentAddress());
 
 		if (statement->elseStatement)
 			translateStatement(statement->elseStatement);
+		
+		m_gen.Function.SetAddress(goto_ref, m_gen.Function.GetCurrentAddress());
 	}
 
 	void GLSLCompiler::translateSwitchStatement(glsl::astSwitchStatement *statement) {

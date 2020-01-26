@@ -73,9 +73,10 @@ List of things that currently don't work (I plan to fix/add them):
 
 ### HLSL
 - classes / interfaces
+- namespaces
 - switch statement
 
 ### Both
+- **preprocessor**
 - cubemaps
-- preprocessor
 - initialize structure members

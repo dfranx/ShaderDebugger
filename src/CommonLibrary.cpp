@@ -11,6 +11,13 @@ namespace sd
 {
 	namespace Common
 	{
+		bv_variable Discard(bv_program* prog, u8 count, bv_variable* args)
+		{
+			ShaderDebugger* dbgr = (ShaderDebugger*)prog->user_data;
+			dbgr->SetDiscarded(true);
+			return bv_variable_create_void();
+		}
+
 		bool isGLSL(bv_program* prog)
 		{
 			auto dbg = (sd::ShaderDebugger*)prog->user_data;
@@ -2355,6 +2362,172 @@ namespace sd
 			}
 
 			return ret;
+		}
+
+		/* integer */
+		bv_variable lib_common_bitCount(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitCount(genIType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::bitCount(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+
+					bv_variable ret = Common::create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitCount(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::bitCount(bv_variable_get_int(args[0])));
+				// bitCount(scalar)
+				else
+					return bv_variable_create_uint(glm::bitCount(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_common_findLSB(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* findLSB(genI/UType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::findLSB(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = Common::create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldReverse(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::findLSB(bv_variable_get_int(args[0])));
+				// bitfieldReverse(scalar)
+				else
+					return bv_variable_create_uint(glm::findLSB(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+		bv_variable lib_common_findMSB(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* bitfieldReverse(genI/UType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::ivec4 vecData = glm::findMSB(sd::AsVector<4, int>(args[0]));
+
+					bv_type outType = vec->prop[0].type;
+					bv_variable ret = Common::create_vec(prog, outType, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
+
+					return ret;
+				}
+				// bitfieldReverse(scalar)
+				else if (args[0].type == bv_type_int)
+					return bv_variable_create_int(glm::findMSB(bv_variable_get_int(args[0])));
+				// bitfieldReverse(scalar)
+				else
+					return bv_variable_create_uint(glm::findMSB(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
+			}
+
+			return bv_variable_create_int(0);
+		}
+
+		/* floating point */
+		bv_variable lib_common_frexp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* frexp(genType, out genIType), frexp(float, out int), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::vec4 signData(0.0f);
+					glm::ivec4 expValData(0.0f);
+
+					signData = glm::frexp(x, expValData);
+
+					// param out value
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_object* outObj = bv_variable_get_object(*outPtr);
+					for (u16 i = 0; i < outObj->type->props.name_count; i++)
+						outObj->prop[i] = bv_variable_create_int(expValData[i]);
+
+					// return value
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(signData[i]);
+
+					return ret;
+				}
+
+				// frexp(float, out int)
+				else {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+
+					int expVal = 0;
+					float significand = glm::frexp(x, expVal);
+
+					bv_variable* outPtr = bv_variable_get_pointer(args[1]);
+					bv_variable_set_int(outPtr, expVal);
+
+					return bv_variable_create_float(significand);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_common_ldexp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* ldexp(genType, genIType), ldexp(float, int), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::ivec4 exp = sd::AsVector<4, int>(args[1]);
+
+					glm::vec4 resData = glm::ldexp(x, exp);
+
+					// return value
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(resData[i]);
+
+					return ret;
+				}
+
+				// ldexp(float, int)
+				else {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					int exp = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
+
+					float res = glm::ldexp(x, exp);
+
+					return bv_variable_create_float(res);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
 		}
 
 		/* helper functions to create vector & matrix definitions */

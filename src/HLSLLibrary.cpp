@@ -1,5 +1,6 @@
 #include <ShaderDebugger/HLSLLibrary.h>
 #include <ShaderDebugger/CommonLibrary.h>
+#include <ShaderDebugger/ShaderDebugger.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Matrix.h>
 #include <ShaderDebugger/Utils.h>
@@ -13,6 +14,13 @@ namespace sd
 {
 	namespace HLSL
 	{
+		/*
+			TODO:
+				- ddx, ddy, ddx_coarse, ddy_coarse, ddx_fine, ddy_fine, fwidth
+				- double type
+				- printf, errorf, asdouble
+		*/
+
 		/* swizzle */
 		bv_variable Swizzle(bv_program* prog, bv_object* obj, const bv_string field)
 		{
@@ -56,6 +64,118 @@ namespace sd
 			}
 		}
 
+		/* misc */
+		bv_variable lib_hlsl_abort(bv_program* prog, u8 count, bv_variable* args)
+		{
+			((sd::ShaderDebugger*)prog->user_data)->SetDiscarded(true);
+			return bv_variable_create_void();
+		}
+		bv_variable lib_hlsl_clip(bv_program* prog, u8 count, bv_variable* args)
+		{
+			bool shouldDiscard = false;
+
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // acosh(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]); // acosh takes only float vectors
+
+					for (u16 i = 0; i < vec->type->props.name_count; i++)
+						shouldDiscard |= (vecData[i] < 0.0f);
+				}
+				else // acosh(scalar)
+					shouldDiscard = (bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])) < 0.0f);
+			}
+
+			if (shouldDiscard)
+				((sd::ShaderDebugger*)prog->user_data)->SetDiscarded(true);
+			
+			return bv_variable_create_void();
+		}
+
+		/* math */
+
+		/* floating points */
+		bv_variable lib_hlsl_asint(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* asint(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_int, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					glm::ivec4 vecData(0);
+					if (vec->prop->type == bv_type_float)
+						vecData = glm::floatBitsToInt(sd::AsVector<4, float>(args[0]));
+					else vecData = sd::AsVector<4, int>(args[0]);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_int(vecData[i]);
+
+					return ret;
+				}
+				// asint(scalar)
+				else if (args[0].type == bv_type_float)
+					return bv_variable_create_int(glm::floatBitsToInt(bv_variable_get_float(args[0])));
+				else
+					return bv_variable_cast(bv_type_int, args[0]);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_asuint(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* asuint(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_uint, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					glm::uvec4 vecData(0);
+					if (vec->prop->type == bv_type_float)
+						vecData = glm::floatBitsToUint(sd::AsVector<4, float>(args[0]));
+					else vecData = sd::AsVector<4, unsigned int>(args[0]);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+					return ret;
+				}
+				// asuint(scalar)
+				else if (args[0].type == bv_type_float)
+					return bv_variable_create_uint(glm::floatBitsToUint(bv_variable_get_float(args[0])));
+				else
+					return bv_variable_cast(bv_type_uint, args[0]);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_asfloat(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* asfloat(genIType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::intBitsToFloat(sd::AsVector<4, int>(args[0]));
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // asfloat(scalar)
+					return bv_variable_create_float(glm::intBitsToFloat(bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+
 		bv_library* Library()
 		{
 			bv_library* lib = bv_library_create();
@@ -94,7 +214,7 @@ namespace sd
 			bv_library_add_function(lib, "atan", Common::lib_common_atan);
 			bv_library_add_function(lib, "atan2", Common::lib_common_atan);
 			bv_library_add_function(lib, "cos", Common::lib_common_cos);
-			bv_library_add_function(lib, "acosh", Common::lib_common_cosh);
+			bv_library_add_function(lib, "cosh", Common::lib_common_cosh);
 			bv_library_add_function(lib, "sin", Common::lib_common_sin);
 			bv_library_add_function(lib, "sinh", Common::lib_common_sinh);
 			bv_library_add_function(lib, "tan", Common::lib_common_tan);
@@ -150,6 +270,20 @@ namespace sd
 			// matrix
 			bv_library_add_function(lib, "determinant", Common::lib_common_determinant);
 			bv_library_add_function(lib, "transpose", Common::lib_common_transpose);
+
+			// integer
+			bv_library_add_function(lib, "countbits", Common::lib_common_bitCount);
+			bv_library_add_function(lib, "firstbitlow", Common::lib_common_findLSB);
+			bv_library_add_function(lib, "firstbithigh", Common::lib_common_findMSB);
+
+			// float
+			bv_library_add_function(lib, "asint", lib_hlsl_asint);
+			bv_library_add_function(lib, "asuint", lib_hlsl_asuint);
+			bv_library_add_function(lib, "asfloat", lib_hlsl_asfloat);
+
+			// misc
+			bv_library_add_function(lib, "abort", lib_hlsl_abort);
+			bv_library_add_function(lib, "clip", lib_hlsl_clip);
 
 			// Texture2D
 			bv_object_info* texture2D = bv_object_info_create("Texture2D");

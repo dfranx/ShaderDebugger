@@ -1,11 +1,14 @@
 - rename *Translator to *Compiler
 
 GLSL BlueVM implementation:
-- move DiscardFunction to libCommon
 - recode vec constructor so that initalizations such as vec4(float, vec2, float) are possible
 
 HLSL BlueVM
 - libHLSL
+- float2x2 * float2
+- modulo operator
+- initializer lists
+- matrix<T, X, Y>, vector<T, X>u
 - testing
 
 Both:
@@ -14,7 +17,7 @@ Both:
 - test variables with no initial value
 
 - [FUTURE] #define & #version
-- [FUTURE] dFdx, dFdy, dFdxCoarse, dFdyCoarse, dFdxFine, dFdyFine, fwidth, fwidthCoarse, fwidthFine
+- [FUTURE] func implementations
 - [FUTURE] reimplement noise functions
 - [FUTURE] mat4 m; m[0].x = 1.0f;
 - [FUTURE] test: mat4 m[4]; m[0][0][0];

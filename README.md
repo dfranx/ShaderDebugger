@@ -75,8 +75,15 @@ List of things that currently don't work (I plan to fix/add them):
 - classes / interfaces
 - namespaces
 - switch statement
+- matrix<T, X, Y>, vector<T, X>
+- initializer lists
 
 ### Both
 - **preprocessor**
 - cubemaps
 - initialize structure members
+- some function implementations (check HLSLLibrary.cpp / GLSLLibrary.cpp)
+- expand all HLSL library functions to support matrices too (example: abs(some_matrix))
+- fix matrixes, these don't work:
+  - mat4 m; m[0].x = 1.0f;
+  - mat4 m[4]; m[0][0][0];

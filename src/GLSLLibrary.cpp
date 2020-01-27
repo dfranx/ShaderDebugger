@@ -236,129 +236,6 @@ namespace sd
 			}
 			return bv_variable_create_float(0.0f);
 		}
-		bv_variable lib_glsl_mix(bv_program* prog, u8 count, bv_variable* args)
-		{
-			/* mix(genType, genType, genType), mix(genType, genType, float), mix(genI/U/B/Type, genI/U/BType, genBType) */
-			if (count == 3) {
-				if (args[0].type == bv_type_object) {
-					bv_object* vec = bv_variable_get_object(args[0]);
-
-					// using: genType, float, genDType, double, genBType
-					if (vec->prop[0].type == bv_type_float)
-					{
-						glm::vec4 x = sd::AsVector<4, float>(args[0]);
-						glm::vec4 y = sd::AsVector<4, float>(args[1]);
-						glm::vec4 a(0.0f);
-
-						// get a
-						if (args[2].type == bv_type_object)
-							a = sd::AsVector<4, float>(args[2]);
-						else
-							a = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[2])));
-
-						glm::vec4 vecData = glm::mix(x, y, a);
-
-						bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
-						bv_object* retObj = bv_variable_get_object(ret);
-
-						for (u16 i = 0; i < retObj->type->props.name_count; i++)
-							retObj->prop[i] = bv_variable_create_float(vecData[i]);
-
-						return ret;
-					}
-					// using: genUType, genBType
-					else if (vec->prop[0].type == bv_type_uint)
-					{
-						glm::uvec4 x = sd::AsVector<4, unsigned int>(args[0]);
-						glm::uvec4 y = sd::AsVector<4, unsigned int>(args[1]);
-						glm::vec4 a = sd::AsVector<4, float>(args[2]);
-
-						glm::uvec4 vecData = glm::mix(x, y, a);
-
-						bv_variable ret = Common::create_vec(prog, bv_type_uint, vec->type->props.name_count);
-						bv_object* retObj = bv_variable_get_object(ret);
-
-						for (u16 i = 0; i < retObj->type->props.name_count; i++)
-							retObj->prop[i] = bv_variable_create_uint(vecData[i]);
-
-						return ret;
-					}
-					// using: genIType, genBType
-					else if (vec->prop[0].type == bv_type_int)
-					{
-						glm::ivec4 x = sd::AsVector<4, int>(args[0]);
-						glm::ivec4 y = sd::AsVector<4, int>(args[1]);
-						glm::vec4 a = sd::AsVector<4, float>(args[2]);
-
-						glm::ivec4 vecData = glm::mix(x, y, a);
-
-						bv_variable ret = Common::create_vec(prog, bv_type_int, vec->type->props.name_count);
-						bv_object* retObj = bv_variable_get_object(ret);
-
-						for (u16 i = 0; i < retObj->type->props.name_count; i++)
-							retObj->prop[i] = bv_variable_create_int(vecData[i]);
-
-						return ret;
-					}
-					// using: genBType, genBType
-					else if (vec->prop[0].type == bv_type_uchar)
-					{
-						glm::bvec4 x = sd::AsVector<4, bool>(args[0]);
-						glm::bvec4 y = sd::AsVector<4, bool>(args[1]);
-						glm::vec4 a = sd::AsVector<4, float>(args[2]);
-
-						glm::bvec4 vecData = glm::mix(x, y, a);
-
-						bv_variable ret = Common::create_vec(prog, bv_type_uchar, vec->type->props.name_count);
-						bv_object* retObj = bv_variable_get_object(ret);
-
-						for (u16 i = 0; i < retObj->type->props.name_count; i++)
-							retObj->prop[i] = bv_variable_create_uchar(vecData[i]);
-
-						return ret;
-					}
-
-				}
-
-				// mix(float, float, float/bool)
-				else if (args[0].type == bv_type_float) {
-					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
-					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
-					float a = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
-
-					return bv_variable_create_float(glm::mix(x, y, a));
-				}
-
-				// mix(uint, uint, bool)
-				else if (args[0].type == bv_type_uint) {
-					unsigned int x = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]));
-					unsigned int y = bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[1]));
-					float a = (float)bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[2]));
-
-					return bv_variable_create_uint(glm::mix(x, y, a));
-				}
-
-				// mix(int, int, bool)
-				else if (args[0].type == bv_type_int) {
-					int x = bv_variable_get_int(bv_variable_cast(bv_type_int, args[0]));
-					int y = bv_variable_get_int(bv_variable_cast(bv_type_int, args[1]));
-					float a = (float)bv_variable_get_int(bv_variable_cast(bv_type_int, args[2]));
-
-					return bv_variable_create_int(glm::mix(x, y, a));
-				}
-
-				// mix(bool, bool, bool)
-				else if (args[0].type == bv_type_uchar) {
-					bool x = bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[0]));
-					bool y = bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[1]));
-					float a = (float)bv_variable_get_uchar(bv_variable_cast(bv_type_uchar, args[2]));
-
-					return bv_variable_create_uchar(glm::mix(x, y, a));
-				}
-			}
-
-			return bv_variable_create_float(0.0f);
-		}
 		bv_variable lib_glsl_mod(bv_program* prog, u8 count, bv_variable* args)
 		{
 			/* mod(genType, genType), mod(genType, float), also for genDType */
@@ -1581,33 +1458,6 @@ namespace sd
 
 			return bv_variable_create_int(0);
 		}
-		bv_variable lib_glsl_bitfieldReverse(bv_program* prog, u8 count, bv_variable* args)
-		{
-			/* bitfieldReverse(genI/UType) */
-			if (count == 1) {
-				if (args[0].type == bv_type_object) {
-					bv_object* vec = bv_variable_get_object(args[0]);
-					glm::ivec4 vecData = glm::bitfieldReverse(sd::AsVector<4, int>(args[0]));
-
-					bv_type outType = vec->prop[0].type;
-					bv_variable ret = Common::create_vec(prog, outType, vec->type->props.name_count);
-					bv_object* retObj = bv_variable_get_object(ret);
-
-					for (u16 i = 0; i < retObj->type->props.name_count; i++)
-						retObj->prop[i] = bv_variable_cast(outType, bv_variable_create_int(vecData[i]));
-
-					return ret;
-				}
-				// bitfieldReverse(scalar)
-				else if (args[0].type == bv_type_int)
-					return bv_variable_create_int(glm::bitfieldReverse(bv_variable_get_int(args[0])));
-				// bitfieldReverse(scalar)
-				else
-					return bv_variable_create_uint(glm::bitfieldReverse(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))));
-			}
-
-			return bv_variable_create_int(0);
-		}
 		bv_variable lib_glsl_uaddCarry(bv_program* prog, u8 count, bv_variable* args)
 		{
 			/* uaddCarry */
@@ -1857,7 +1707,7 @@ namespace sd
 			bv_library_add_function(lib, "log2", Common::lib_common_log2);
 			bv_library_add_function(lib, "max", Common::lib_common_max);
 			bv_library_add_function(lib, "min", Common::lib_common_min);
-			bv_library_add_function(lib, "mix", lib_glsl_mix);
+			bv_library_add_function(lib, "mix", Common::lib_common_mix);
 			bv_library_add_function(lib, "mod", lib_glsl_mod);
 			bv_library_add_function(lib, "modf", Common::lib_common_modf);
 			bv_library_add_function(lib, "noise1", lib_glsl_noise1);
@@ -1876,10 +1726,10 @@ namespace sd
 			// floating-point functions
 			bv_library_add_function(lib, "floatBitsToInt", lib_glsl_floatBitsToInt);
 			bv_library_add_function(lib, "floatBitsToUint", lib_glsl_floatBitsToUint);
-			bv_library_add_function(lib, "frexp", lib_glsl_frexp);
+			bv_library_add_function(lib, "frexp", Common::lib_common_frexp);
 			bv_library_add_function(lib, "intBitsToFloat", lib_glsl_intBitsToFloat);
 			bv_library_add_function(lib, "uintBitsToFloat", lib_glsl_uintBitsToFloat);
-			bv_library_add_function(lib, "ldexp", lib_glsl_ldexp);
+			bv_library_add_function(lib, "ldexp", Common::lib_common_ldexp);
 			bv_library_add_function(lib, "packDouble2x32", lib_glsl_packDouble2x32);
 			bv_library_add_function(lib, "packHalf2x16", lib_glsl_packHalf2x16);
 			bv_library_add_function(lib, "packUnorm2x16", lib_glsl_packUnorm2x16);
@@ -1948,7 +1798,7 @@ namespace sd
 			bv_library_add_function(lib, "bitCount", Common::lib_common_bitCount);
 			bv_library_add_function(lib, "bitfieldExtract", lib_glsl_bitfieldExtract);
 			bv_library_add_function(lib, "bitfieldInsert", lib_glsl_bitfieldInsert);
-			bv_library_add_function(lib, "bitfieldReverse", lib_glsl_bitfieldReverse);
+			bv_library_add_function(lib, "bitfieldReverse", Common::lib_common_bitfieldReverse);
 			bv_library_add_function(lib, "findLSB", Common::lib_common_findLSB);
 			bv_library_add_function(lib, "findMSB", Common::lib_common_findMSB);
 			bv_library_add_function(lib, "uaddCarry", lib_glsl_uaddCarry);

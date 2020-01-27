@@ -541,6 +541,7 @@ namespace sd
 		case M4::HLSLBinaryOp_Add:          m_gen.Function.Add(); break;
 		case M4::HLSLBinaryOp_Sub:          m_gen.Function.Subtract(); break;
 		case M4::HLSLBinaryOp_Mul:          m_gen.Function.Multiply(); break;
+		case M4::HLSLBinaryOp_Mod:          m_gen.Function.Modulo(); break;
 		case M4::HLSLBinaryOp_Div:          m_gen.Function.Divide(); break;
 		case M4::HLSLBinaryOp_Less:         m_gen.Function.Less(); break;
 		case M4::HLSLBinaryOp_Greater:      m_gen.Function.Greater(); break;
@@ -560,15 +561,33 @@ namespace sd
 		HLSLCompiler::ExpressionType lType = m_convertType(expr->expression1->expressionType);
 		HLSLCompiler::ExpressionType rType = m_convertType(expr->expression2->expressionType);
 
-		translateExpression(expr->expression1);
-		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
-			m_generateConvert(rType);
+		// call fmod() when using modulo with floats
+		if (expr->binaryOp == M4::HLSLBinaryOp_Mod &&
+			(rType.Type == ag::Type::Float || lType.Type == ag::Type::Float) &&
+			(rType.Columns * rType.Rows == 1 && lType.Columns * lType.Rows == 1))
+		{
+			translateExpression(expr->expression2);
+			if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+				m_generateConvert(lType);
 
-		translateExpression(expr->expression2);
-		if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
-			m_generateConvert(lType);
+			translateExpression(expr->expression1);
+			if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+				m_generateConvert(rType);
 
-		translateOperator(expr->binaryOp);
+			m_gen.Function.CallReturn("fmod", 2);
+		}
+		// else generate operator opcode
+		else {
+			translateExpression(expr->expression1);
+			if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+				m_generateConvert(rType);
+
+			translateExpression(expr->expression2);
+			if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+				m_generateConvert(lType);
+
+			translateOperator(expr->binaryOp);
+		}
 	}
 	void HLSLCompiler::translateAssignExpression(M4::HLSLBinaryExpression* expr)
 	{
@@ -711,8 +730,21 @@ namespace sd
 	}
 	void HLSLCompiler::translateCastingExpression(M4::HLSLCastingExpression* expression)
 	{
-		translateExpression(expression->expression);
-		m_convertType(expression->type);
+		// (VSInput)0;
+		if (expression->type.baseType == M4::HLSLBaseType_UserDefined) {
+			M4::HLSLExpression* val = expression->expression;
+			if (val->nodeType == M4::HLSLNodeType_LiteralExpression) {
+				int mval = ((M4::HLSLLiteralExpression*)val)->iValue;
+				std::string sname = expression->type.typeName;
+
+				// TODO:
+			}
+		}
+		// (float)2.5f
+		else {
+			translateExpression(expression->expression);
+			m_convertType(expression->type);
+		}
 	}
 	void HLSLCompiler::translateArguments(M4::HLSLArgument* argument)
 	{
@@ -825,38 +857,59 @@ namespace sd
 	}
 	void HLSLCompiler::translateFunctionCall(M4::HLSLFunctionCall* expr)
 	{
+		// mul(a,b)
+		if (strcmp(expr->function->name, "mul") == 0 && expr->numArguments == 2) {
+			// handle mul() with * operator
 
-		Function data = m_matchFunction(expr->function->name, expr->numArguments, expr->argument);
-		std::vector<HLSLCompiler::ExpressionType> paramTypes(expr->numArguments);
-		for (int i = 0; i < data.Arguments.size(); i++)
-			paramTypes[i] = m_convertType(data.Arguments[i].Type);
+			HLSLCompiler::ExpressionType lType = m_convertType(expr->argument->expressionType);
+			HLSLCompiler::ExpressionType rType = m_convertType(expr->argument->nextExpression->expressionType);
 
-		for (int i = expr->numArguments - 1; i >= 0; i--) {
-			bool temp_usePointer = m_usePointer;
+			translateExpression(expr->argument);
+			if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+				m_generateConvert(rType);
 
-			if (data.Name.empty()) {
-				/*
-				TODO: pointers for built in functions
-				if (m_builtInFuncsPtrs.count(expression->name) > 0)
-					if (std::count(m_builtInFuncsPtrs[expression->name].begin(), m_builtInFuncsPtrs[expression->name].end(), i) > 0)
-						m_usePointer = true;
-				*/
-			}
-			else if (data.Arguments[i].Storage == sd::Variable::StorageType::Out)
-				m_usePointer = true;
+			translateExpression(expr->argument->nextExpression);
+			if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+				m_generateConvert(lType);
 
-
-			M4::HLSLExpression* arg = expr->argument + i;
-			translateExpression(arg);
-
-			m_usePointer = temp_usePointer;
-
-			if (!data.Name.empty() && paramTypes[i] != m_convertType(arg->expressionType))
-				m_generateConvert(paramTypes[i]);
+			translateOperator(M4::HLSLBinaryOp_Mul);
 		}
+		// other functions
+		else {
+			Function data = m_matchFunction(expr->function->name, expr->numArguments, expr->argument);
+			std::vector<HLSLCompiler::ExpressionType> paramTypes(expr->numArguments);
+			for (int i = 0; i < data.Arguments.size(); i++)
+				paramTypes[i] = m_convertType(data.Arguments[i].Type);
+
+			for (int i = expr->numArguments - 1; i >= 0; i--) {
+				bool temp_usePointer = m_usePointer;
+
+				if (data.Name.empty()) {
+					/*
+					TODO: pointers for built in functions
+					if (m_builtInFuncsPtrs.count(expression->name) > 0)
+						if (std::count(m_builtInFuncsPtrs[expression->name].begin(), m_builtInFuncsPtrs[expression->name].end(), i) > 0)
+							m_usePointer = true;
+					*/
+				}
+				else if (data.Arguments[i].Storage == sd::Variable::StorageType::Out)
+					m_usePointer = true;
 
 
-		m_gen.Function.CallReturn(expr->function->name, expr->numArguments);
+				M4::HLSLExpression* arg = expr->argument;
+				for (int j = 0; j < i; j++)
+					arg = arg->nextExpression;
+				translateExpression(arg);
+
+				m_usePointer = temp_usePointer;
+
+				if (!data.Name.empty() && paramTypes[i] != m_convertType(arg->expressionType))
+					m_generateConvert(paramTypes[i]);
+			}
+
+
+			m_gen.Function.CallReturn(expr->function->name, expr->numArguments);
+		}
 	}
 
 	void HLSLCompiler::translateStatements(M4::HLSLStatement* statement)

@@ -95,6 +95,7 @@ namespace sd
 		bv_variable lib_common_log2(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_max(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_min(bv_program* prog, u8 count, bv_variable* args);
+		bv_variable lib_common_mix(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_modf(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_pow(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_round(bv_program* prog, u8 count, bv_variable* args);
@@ -123,6 +124,7 @@ namespace sd
 		bv_variable lib_common_transpose(bv_program* prog, u8 count, bv_variable* args);
 
 		// integer
+		bv_variable lib_common_bitfieldReverse(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_bitCount(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_findLSB(bv_program* prog, u8 count, bv_variable* args);
 		bv_variable lib_common_findMSB(bv_program* prog, u8 count, bv_variable* args);

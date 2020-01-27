@@ -17,8 +17,8 @@ namespace sd
 		/*
 			TODO:
 				- ddx, ddy, ddx_coarse, ddy_coarse, ddx_fine, ddy_fine, fwidth
-				- double type
-				- printf, errorf, asdouble
+				- double type, asdouble()
+				- printf, errorf, msad4
 		*/
 
 		/* swizzle */
@@ -93,6 +93,178 @@ namespace sd
 		}
 
 		/* math */
+		bv_variable lib_hlsl_saturate(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* saturate(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::clamp(sd::AsVector<4, float>(args[0]), glm::vec4(0.0f), glm::vec4(1.0f));
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // saturate(scalar)
+					return bv_variable_create_float(glm::clamp(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f, 1.0f));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_sincos(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* sincos */
+			if (count >= 3) {
+				if (args[0].type == bv_type_object) {
+					bv_object* x = bv_variable_get_object(args[0]);
+					glm::vec4 xData = sd::AsVector<4, float>(args[0]);
+
+					glm::vec4 sinRes = glm::sin(xData);
+					glm::vec4 cosRes = glm::cos(xData);
+
+					bv_variable* outSin = bv_variable_get_pointer(args[1]);
+					bv_object* outSinObj = bv_variable_get_object(*outSin);
+					for (u16 i = 0; i < outSinObj->type->props.name_count; i++)
+						outSinObj->prop[i] = bv_variable_create_float(sinRes[i]);
+
+					bv_variable* outCos = bv_variable_get_pointer(args[2]);
+					bv_object* outCosObj = bv_variable_get_object(*outCos);
+					for (u16 i = 0; i < outCosObj->type->props.name_count; i++)
+						outCosObj->prop[i] = bv_variable_create_float(cosRes[i]);
+				}
+				else {
+					float x = bv_variable_get_float(args[0]);
+					float sinRes = glm::sin(x), cosRes = glm::cos(x);
+
+					bv_variable* outSin = bv_variable_get_pointer(args[1]);
+					bv_variable_set_float(outSin, sinRes);
+
+					bv_variable* outCos = bv_variable_get_pointer(args[2]);
+					bv_variable_set_float(outCos, cosRes);
+				}
+			}
+
+			return bv_variable_create_void();
+		}
+		bv_variable lib_hlsl_rcp(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* rcp(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = glm::vec4(1.0f)/sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				else // rcp(scalar)
+					return bv_variable_create_float(1.0f / bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_log10(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* rcp(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+					glm::vec4 vecData = sd::AsVector<4, float>(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++) {
+						vecData[i] = log10f(vecData[i]);
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+					}
+
+					return ret;
+				}
+				else // rcp(scalar)
+					return bv_variable_create_float(log10f(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]))));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_isfinite(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* isfinite(genType), isfinite(genDType)  */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 val = sd::AsVector<4, float>(args[0]);
+					glm::bvec4 vecData = glm::not_(glm::isnan(val)) && glm::not_(glm::isinf(val));
+
+					bv_variable ret = Common::create_vec(prog, bv_type_uchar, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uchar(vecData[i]);
+
+					return ret;
+
+				}
+				// isfinite(float)
+				else {
+					float scalarData = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					return bv_variable_create_uchar(!glm::isnan(scalarData) && !glm::isinf(scalarData));
+				}
+			}
+
+			return bv_variable_create_uchar(0);
+		}
+		bv_variable lib_hlsl_fmod(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* mod(genType, genType), mod(genType, float), also for genDType */
+			if (count == 2) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					// using: genType, float, genDType, double
+					glm::vec4 x = sd::AsVector<4, float>(args[0]);
+					glm::vec4 y(0.0f);
+
+					// get y
+					if (args[1].type == bv_type_object)
+						y = sd::AsVector<4, float>(args[1]);
+					else
+						y = glm::vec4(bv_variable_get_float(bv_variable_cast(bv_type_float, args[1])));
+
+					glm::vec4 vecData = x - y * glm::trunc(x / y);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+
+				// mod(float, float)
+				else if (args[0].type == bv_type_float) {
+					float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
+					float y = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
+
+					float retVal = x - y * glm::trunc(x / y);
+
+					return bv_variable_create_float(retVal);
+				}
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
 
 		/* floating points */
 		bv_variable lib_hlsl_asint(bv_program* prog, u8 count, bv_variable* args)
@@ -175,6 +347,112 @@ namespace sd
 
 			return bv_variable_create_float(0.0f);
 		}
+		bv_variable lib_hlsl_f32tof16(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* f32tof16(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_uint, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					glm::vec4 val = sd::AsVector<4, float>(args[0]);
+
+					glm::uvec4 vecData(0);
+					for (u16 i = 0; i < 4; i++)
+						vecData[i] = glm::packHalf2x16(glm::vec2(val[i], 0.0f));
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_uint(vecData[i]);
+
+					return ret;
+				}
+				// f32tof16(scalar)
+				else
+					return bv_variable_create_uint(glm::packHalf2x16(glm::vec2(bv_variable_get_float(bv_variable_cast(bv_type_float, args[0])), 0.0f)));
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+		bv_variable lib_hlsl_f16tof32(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* f32tof16(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					glm::uvec4 val = sd::AsVector<4, unsigned int>(args[0]);
+
+					glm::vec4 vecData(0);
+					for (u16 i = 0; i < 4; i++)
+						vecData[i] = glm::unpackHalf2x16(val[i]).x;
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+				// f32tof16(scalar)
+				else
+					return bv_variable_create_float(glm::unpackHalf2x16(bv_variable_get_uint(bv_variable_cast(bv_type_uint, args[0]))).x);
+			}
+
+			return bv_variable_create_float(0.0f);
+		}
+
+		/* vector */
+		bv_variable lib_hlsl_dst(bv_program* prog, u8 count, bv_variable* args)
+		{
+			/* dst(genType) */
+			if (count == 1) {
+				if (args[0].type == bv_type_object) { // ceil(vec3), ...
+					bv_object* vec = bv_variable_get_object(args[0]);
+
+					glm::vec4 src1 = sd::AsVector<4, float>(args[0]);
+					glm::vec4 src2 = sd::AsVector<4, float>(args[1]);
+
+					glm::vec4 vecData(1.0f, src1.y * src2.y, src1.z, src2.w); // https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dst---vs
+
+					bv_variable ret = Common::create_vec(prog, bv_type_float, 4);
+					bv_object* retObj = bv_variable_get_object(ret);
+
+					for (u16 i = 0; i < retObj->type->props.name_count; i++)
+						retObj->prop[i] = bv_variable_create_float(vecData[i]);
+
+					return ret;
+				}
+			}
+
+			return Common::create_vec(prog, bv_type_float, 4);
+		}
+		bv_variable lib_hlsl_lit(bv_program* prog, u8 count, bv_variable* args)
+		{
+			float ambient = 1, diffuse = 0, specular = 0;
+
+			/* float4 lit(float, float, float) */
+			if (count >= 3) {
+				float n_dot_l = bv_variable_get_float(args[0]);
+				float n_dot_h = bv_variable_get_float(args[1]);
+				float m = bv_variable_get_float(args[2]);
+				
+				ambient = 1;
+				diffuse = (n_dot_l < 0) ? 0 : n_dot_l;
+				specular = (n_dot_l < 0 || n_dot_h < 0) ? 0 : glm::pow(n_dot_h, m);
+			}
+
+			bv_variable ret = Common::create_vec(prog, bv_type_float, 4);
+			bv_object* vec = bv_variable_get_object(ret);
+			vec->prop[0] = bv_variable_create_float(ambient);
+			vec->prop[1] = bv_variable_create_float(diffuse);
+			vec->prop[2] = bv_variable_create_float(specular);
+			vec->prop[3] = bv_variable_create_float(1.0f);
+
+			return ret;
+		}
 
 		bv_library* Library()
 		{
@@ -216,6 +494,7 @@ namespace sd
 			bv_library_add_function(lib, "cos", Common::lib_common_cos);
 			bv_library_add_function(lib, "cosh", Common::lib_common_cosh);
 			bv_library_add_function(lib, "sin", Common::lib_common_sin);
+			bv_library_add_function(lib, "sincos", lib_hlsl_sincos);
 			bv_library_add_function(lib, "sinh", Common::lib_common_sinh);
 			bv_library_add_function(lib, "tan", Common::lib_common_tan);
 			bv_library_add_function(lib, "tanh", Common::lib_common_tanh);
@@ -236,17 +515,24 @@ namespace sd
 			bv_library_add_function(lib, "exp2", Common::lib_common_exp2);
 			bv_library_add_function(lib, "floor", Common::lib_common_floor);
 			bv_library_add_function(lib, "fma", Common::lib_common_fma);
+			bv_library_add_function(lib, "fmod", lib_hlsl_fmod);
 			bv_library_add_function(lib, "frac", Common::lib_common_fract);
 			bv_library_add_function(lib, "fwidth", Common::lib_common_fwidth);
+			bv_library_add_function(lib, "rcp", lib_hlsl_rcp);
 			bv_library_add_function(lib, "rsqrt", Common::lib_common_inversesqrt);
 			bv_library_add_function(lib, "isinf", Common::lib_common_isinf);
 			bv_library_add_function(lib, "isnan", Common::lib_common_isnan);
+			bv_library_add_function(lib, "isfinite", lib_hlsl_isfinite);
 			bv_library_add_function(lib, "log", Common::lib_common_log);
 			bv_library_add_function(lib, "log2", Common::lib_common_log2);
+			bv_library_add_function(lib, "log10", lib_hlsl_log10);
+			bv_library_add_function(lib, "mad", Common::lib_common_fma);
 			bv_library_add_function(lib, "max", Common::lib_common_max);
 			bv_library_add_function(lib, "min", Common::lib_common_min);
+			bv_library_add_function(lib, "lerp", Common::lib_common_mix);
 			bv_library_add_function(lib, "modf", Common::lib_common_modf);
 			bv_library_add_function(lib, "round", Common::lib_common_round);
+			bv_library_add_function(lib, "saturate", lib_hlsl_saturate);
 			bv_library_add_function(lib, "sign", Common::lib_common_sign);
 			bv_library_add_function(lib, "smoothstep", Common::lib_common_smoothstep);
 			bv_library_add_function(lib, "sqrt", Common::lib_common_sqrt);
@@ -257,6 +543,8 @@ namespace sd
 			bv_library_add_function(lib, "cross", Common::lib_common_cross);
 			bv_library_add_function(lib, "distance", Common::lib_common_distance);
 			bv_library_add_function(lib, "dot", Common::lib_common_dot);
+			bv_library_add_function(lib, "dst", lib_hlsl_dst);
+			bv_library_add_function(lib, "lit", lib_hlsl_lit);
 			bv_library_add_function(lib, "faceforward", Common::lib_common_faceforward);
 			bv_library_add_function(lib, "length", Common::lib_common_length);
 			bv_library_add_function(lib, "normalize", Common::lib_common_normalize);
@@ -272,6 +560,7 @@ namespace sd
 			bv_library_add_function(lib, "transpose", Common::lib_common_transpose);
 
 			// integer
+			bv_library_add_function(lib, "reversebits", Common::lib_common_bitfieldReverse);
 			bv_library_add_function(lib, "countbits", Common::lib_common_bitCount);
 			bv_library_add_function(lib, "firstbitlow", Common::lib_common_findLSB);
 			bv_library_add_function(lib, "firstbithigh", Common::lib_common_findMSB);
@@ -280,7 +569,11 @@ namespace sd
 			bv_library_add_function(lib, "asint", lib_hlsl_asint);
 			bv_library_add_function(lib, "asuint", lib_hlsl_asuint);
 			bv_library_add_function(lib, "asfloat", lib_hlsl_asfloat);
-
+			bv_library_add_function(lib, "f32tof16", lib_hlsl_f32tof16);
+			bv_library_add_function(lib, "f16tof32", lib_hlsl_f16tof32);
+			bv_library_add_function(lib, "frexp", Common::lib_common_frexp);
+			bv_library_add_function(lib, "ldexp", Common::lib_common_ldexp);
+			
 			// misc
 			bv_library_add_function(lib, "abort", lib_hlsl_abort);
 			bv_library_add_function(lib, "clip", lib_hlsl_clip);

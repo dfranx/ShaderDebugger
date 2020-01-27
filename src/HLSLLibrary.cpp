@@ -454,6 +454,29 @@ namespace sd
 			return ret;
 		}
 
+		/* Texture1/2/3D */
+		bv_variable lib_hlsl_Texture_Sample(bv_program* prog, bv_object* me, u8 argc, bv_variable* args)
+		{
+			/* TODO: clamp LOD, etc... */
+			if (argc >= 2) {
+				bv_object* samplerState = bv_variable_get_object(args[0]);
+
+				// Texture1D/2D/3D
+				if (IsBasicTexture(me->type->name)) {
+					Texture* tex = (Texture*)me->user_data;
+					glm::vec3 uv = sd::AsVector<3, float>(args[1]);
+
+					float lod = 0.0f; // TODO: LOD calculation
+
+					glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
+					
+					return Common::create_float4(prog, sample);
+				}
+			}
+
+			return Common::create_float4(prog);
+		}
+
 		bv_library* Library()
 		{
 			bv_library* lib = bv_library_create();
@@ -580,8 +603,12 @@ namespace sd
 
 			// Texture2D
 			bv_object_info* texture2D = bv_object_info_create("Texture2D");
-			// TODO: methods
+			bv_object_info_add_ext_method(texture2D, "Sample", lib_hlsl_Texture_Sample);
 			bv_library_add_object_info(lib, texture2D);
+
+			// SamplerState
+			bv_object_info* samplerState = bv_object_info_create("SamplerState");
+			bv_library_add_object_info(lib, samplerState);
 
 			return lib;
 		}

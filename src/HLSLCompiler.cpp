@@ -11,6 +11,7 @@
 #include <hlslparser/HLSLParser.h>
 #include <hlslparser/HLSLTree.h>
 
+#include <ShaderDebugger/Utils.h>
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <ShaderDebugger/HLSLCompiler.h>
 
@@ -823,19 +824,27 @@ namespace sd
 	}
 	void HLSLCompiler::translateMethodCall(M4::HLSLMethodCall* expr)
 	{
+		// arguments
 		bool temp_isSet = m_isSet, temp_usePointer = m_usePointer;
+		m_isSet = false;
+		m_usePointer = true;
+		for (int i = expr->numArguments - 1; i >= 0; i--) {
+			M4::HLSLExpression* arg = expr->argument;
+			for (int j = 0; j < i; j++)
+				arg = arg->nextExpression;
+			translateExpression(arg);
+		}
+		m_isSet = temp_isSet;
+		m_usePointer = temp_usePointer;
+
+		// object
 		m_isSet = false;
 		m_usePointer = true;
 		translateExpression(expr->object);
 		m_isSet = temp_isSet;
 		m_usePointer = temp_usePointer;
 
-		M4::HLSLExpression* arg = expr->argument;
-		while (arg != NULL) {
-			translateExpression(arg);
-			arg = arg->nextExpression;
-		}
-
+		// call method
 		m_gen.Function.CallReturnMethod(expr->function->name, expr->numArguments);
 	}
 	void HLSLCompiler::translateAttributes(M4::HLSLAttribute* attribute)
@@ -1081,6 +1090,11 @@ namespace sd
 		if (m_curFuncData->Name == m_entryFunction) {
 			// create global objects (vec3, etc..)
 			for (auto& gInitClass : m_initObjsInMain) {
+
+				// skip textures and sampler states (TODO: should actually check if register is set, i guess..)
+				if (sd::IsBasicTexture(gInitClass.second.c_str()) || gInitClass.second == "SamplerState")
+					continue;
+
 				size_t varID = 0;
 				for (auto& gVar : m_globals)
 					if (gVar.Name == gInitClass.first)

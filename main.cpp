@@ -154,6 +154,13 @@ void OutputVariableValue(bv_variable* val)
 					printf("\n");
 				}
 			}
+			// textures
+			else if (sd::IsBasicTexture(objtypeName.c_str()))
+			{
+				sd::Texture* tex = (sd::Texture*)obj->user_data;
+				printf("Texture %dx%dx%d\n", objtypeName, tex->Width, tex->Height, tex->Depth);
+			}
+			// others
 			else
 			{
 				bool isNull = true;
@@ -196,9 +203,9 @@ int main() {
 		if (global.Storage == sd::Variable::StorageType::Uniform ||
 			global.Storage == sd::Variable::StorageType::In)
 		{
-			if (global.Type == "sampler2D") {
+			if (sd::IsBasicTexture(global.Type.c_str())) {
 				// TODO: texture loading
-				dbg.SetValue(global.Name, "sampler2D", &white);
+				dbg.SetValue(global.Name, global.Type , &white);
 			} else {
 				printf("Please enter value for %s %s: ", global.Type.c_str(), global.Name.c_str());
 

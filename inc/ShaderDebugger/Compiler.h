@@ -10,6 +10,8 @@
 #include <ShaderDebugger/Structure.h>
 #include <ShaderDebugger/Variable.h>
 
+#include <wgtcc/cpp.h>
+
 extern "C" {
 	#include <BlueVM/bv_object.h>
 }
@@ -40,6 +42,7 @@ namespace sd
 		virtual void AddImmediateGlobalDefinition(Variable var) = 0;
 
 		bv_object_get_property_ext PropertyGetter;
+		bv_object_default_constructor_ext ObjectConstructor;
 
 		enum class Language
 		{
@@ -48,6 +51,21 @@ namespace sd
 			Custom
 		};
 		inline Language GetLanguage() { return m_language; }
+
+		inline const pp::MacroMap& GetMacroList() { return m_macros; }
+		inline void AddMacro(const std::string& name, const pp::Macro& mac) {
+			auto res = m_macros.find(name);
+			if (res != m_macros.end()) m_macros.erase(res);
+			m_macros.insert(std::make_pair(name, mac));
+		}
+		inline void AddMacro(const std::string& name, const std::string& src)
+		{
+			pp::TokenSequence ts;
+			pp::Scanner scanner(&src);
+			scanner.Tokenize(ts);
+			AddMacro(name, pp::Macro(ts, false));
+		}
+		inline void ClearMacroList() { m_macros.clear(); }
 
 	protected:
 		Language m_language;
@@ -58,5 +76,7 @@ namespace sd
 		std::vector<Function> m_func;
 		std::unordered_map<std::string, std::vector<std::string>> m_locals;
 		std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_localTypes;
+
+		pp::MacroMap m_macros;
 	};
 }

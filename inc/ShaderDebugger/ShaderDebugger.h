@@ -22,11 +22,8 @@ namespace sd
 		template<typename CodeCompiler>
 		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
 		{
-			if (m_compiler != nullptr)
-				delete m_compiler;
-			if (m_immCompiler != nullptr)
-				delete m_immCompiler;
-			
+			m_clear();
+
 			m_compiler = new CodeCompiler();
 			m_compiler->SetImmediate(false);
 
@@ -54,6 +51,7 @@ namespace sd
 				bv_program_add_function(m_prog, "$$discard", Common::Discard);
 
 				m_prog->property_getter = m_compiler->PropertyGetter;
+				m_prog->default_constructor = m_compiler->ObjectConstructor;
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
 				if (entryPtr == nullptr)
@@ -75,6 +73,8 @@ namespace sd
 
 		inline bv_variable GetReturnValue() { return bv_variable_copy(m_stepper->result); }
 
+		void SetArguments(bv_stack* args);
+
 		std::string GetCurrentFunction();
 		std::vector<std::string> GetFunctionStack();
 		std::vector<std::string> GetCurrentFunctionLocals();
@@ -95,10 +95,12 @@ namespace sd
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)
 		// this makes ShaderDebugger work without needing to know which shader language it uses
 		void SetValue(const std::string& varName, float value);
-		void SetValue(const std::string& varName, const std::string& classType, glm::vec3 val);
+		void SetValue(const std::string& varName, const std::string& classType, glm::vec4 val);
 		void SetValue(const std::string& varName, const std::string& classType, sd::Texture* val);
 
 		bv_variable* GetValue(const std::string& gvarname);
+
+		void AddGlobal(const std::string& varName);
 
 		inline void SetDiscarded(bool d) { 
 			m_discarded = d;
@@ -113,6 +115,8 @@ namespace sd
 	private:
 		bool m_checkBreakpoint(int line);
 		Function m_getFunctionInfo(const std::string& fname);
+
+		void m_clear();
 
 		bool m_discarded;
 

@@ -54,6 +54,18 @@ set(SOURCES
 
 # FastNoise
 	libs/FastNoise/FastNoise.cpp
+
+# preprocessor
+	libs/wgtcc/ast.cc
+	libs/wgtcc/cpp.cc
+	libs/wgtcc/encoding.cc
+	libs/wgtcc/error.cc
+	libs/wgtcc/evaluator.cc
+	libs/wgtcc/parser.cc
+	libs/wgtcc/scanner.cc
+	libs/wgtcc/scope.cc
+	libs/wgtcc/token.cc
+	libs/wgtcc/type.cc
 )
 
 # cmake toolchain 

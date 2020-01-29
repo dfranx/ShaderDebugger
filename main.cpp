@@ -2,6 +2,7 @@
 #include <string.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include <ShaderDebugger/Utils.h>
@@ -11,7 +12,6 @@
 #include <ShaderDebugger/HLSLLibrary.h>
 #include <ShaderDebugger/HLSLCompiler.h>
 #include <ShaderDebugger/ShaderDebugger.h>
-
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& dlm)
 {
@@ -203,6 +203,10 @@ int main() {
 		if (global.Storage == sd::Variable::StorageType::Uniform ||
 			global.Storage == sd::Variable::StorageType::In)
 		{
+			// skip samplerstate for now
+			if (global.Type == "SamplerState")
+				continue;
+			
 			if (sd::IsBasicTexture(global.Type.c_str())) {
 				// TODO: texture loading
 				dbg.SetValue(global.Name, global.Type , &white);
@@ -211,18 +215,56 @@ int main() {
 
 				if (global.Type == "float") {
 					float val;
-					scanf("%f", &val);
+					scanf(" %f", &val);
 					dbg.SetValue(global.Name, val);
 				}
-				else if (global.Type == "vec3") {
-					float x, y, z;
-					scanf("%f %f %f", &x, &y, &z);
-					dbg.SetValue(global.Name, "vec3", glm::vec3(x, y, z));
+				// vectors
+				else {
+					glm::vec4 inData(0.0f);
+
+					// hacky way to get # of components
+					u16 propCount = 2;
+					for (int i = 0; i < global.Type.size(); i++)
+						if (isdigit(global.Type[i]))
+							propCount = global.Type[i] - '0';
+
+					for (int i = 0; i < propCount; i++)
+						scanf(" %f", &inData[i]);
+
+					dbg.SetValue(global.Name, global.Type, inData);
 				}
+				// TODO: matrix
 			}
-			// TODO: matrix
 		}
 	}
+
+	// initialize arguments
+	const auto& funcs = dbg.GetCompiler()->GetFunctions();
+	for (const auto& func : funcs) {
+		if (func.Name == "main") // TODO: == EntryFunction
+		{
+			const auto& args = func.Arguments;
+			if (args.size() != 0) {
+				bv_stack argStack = bv_stack_create();
+				for (const auto& arg : args) {
+					printf("Please enter value for %s %s: ", arg.Type.c_str(), arg.Name.c_str());
+
+					if (arg.Type == "float") {
+						float val;
+						scanf(" %f", &val);
+						bv_stack_push(&argStack, bv_variable_create_float(val));
+					}
+					// TODO: others + merge this with uniform input thingy
+				}
+				dbg.SetArguments(&argStack);
+			}
+		}
+	}
+
+
+	// 
+	//dbg.AddGlobal("gl_FragCoord");
+	//dbg.SetValue("gl_FragCoord", "vec4", glm::vec4(400, 300, 0.1f, 0.1f));
 
 	// skip initialization
 	dbg.Step();

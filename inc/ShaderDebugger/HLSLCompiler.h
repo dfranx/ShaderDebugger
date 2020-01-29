@@ -110,6 +110,9 @@ namespace sd
 		bool m_caseIfDefault;
 		size_t m_caseIfAddr;
 
+		std::unordered_map<std::string, std::vector<int>> m_builtInFuncsPtrs;
+		void m_buildFuncArgPtrs();
+
 		// immediate mode function definitions
 		std::vector<M4::HLSLFunction*> m_immFuncs;
 		std::vector<M4::HLSLStruct*> m_immStructs;

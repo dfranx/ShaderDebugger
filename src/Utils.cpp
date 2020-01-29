@@ -127,6 +127,17 @@ namespace sd
 		
 		return bv_type_void;
 	}
+	bv_type GetVariableTypeFromName(const char* name)
+	{
+		static const char* tNames[] = { "int", "float", "bool", "double", "uint", "byte", "char", "short", "half" };
+		static bv_type tTypes[] =     { bv_type_int, bv_type_float, bv_type_uchar, bv_type_float, bv_type_uint, bv_type_uchar, bv_type_char, bv_type_short, bv_type_float };
+
+		for (u8 i = 0; i < 9; i++)
+			if (strcmp(name, tNames[i]) == 0)
+				return tTypes[i];
+
+		return bv_type_void;
+	}
 
 	bool IsBasicTexture(const char* name)
 	{

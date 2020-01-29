@@ -1,7 +1,7 @@
-GLSL BlueVM implementation:
-- recode vec constructor so that initalizations such as vec4(float, vec2, float) are possible
+- [HLSL] semantics
 
 Both:
 - test params with 'out' keyword 
 - test arrays
 - test variables with no initial value
+- test vector constructors

@@ -1,6 +1,8 @@
 #include <ShaderDebugger/GLSLCompiler.h>
 #include <ShaderDebugger/GLSLLibrary.h>
+#include <ShaderDebugger/CommonLibrary.h>
 #include <string.h>
+#include <sstream>
 
 #undef KEYWORD
 #define KEYWORD(X) glsl::kKeyword_##X,
@@ -36,6 +38,8 @@ namespace sd
 		m_gen.Reset();
 
 		PropertyGetter = GLSL::Swizzle;
+		ObjectConstructor = Common::DefaultConstructor;
+
 		m_lastLineSaved = -1;
 		m_isSet = false;
 		m_usePointer = false;
@@ -55,6 +59,30 @@ namespace sd
 		std::string actualSource = source;
 		if (m_isImmediate)
 			actualSource = "void immediate() { return " + source + "; }"; // the return type doesn't matter here :P
+
+
+		// add the user defined macros
+		pp::MacroMap macroCopy = m_macros;
+		pp::Preprocessor preprocess;
+		for (auto& pair : m_macros)
+			preprocess.AddMacro(pair.first, pair.second);
+		if (!m_isImmediate) m_macros.clear();
+
+		// preprocess
+		std::stringstream sourcePreprocessed;
+		pp::TokenSequence tokSeq;
+		preprocess.Process(actualSource, "shader.hlsl", tokSeq);
+		tokSeq.Print(sourcePreprocessed);
+		actualSource = sourcePreprocessed.str();
+
+		// add back the user defined macros to the macro list
+		if (!m_isImmediate) {
+			m_macros = preprocess.GetMacroList();
+			for (auto& pair : macroCopy)
+				if (m_macros.count(pair.first) == 0)
+					m_macros.insert(pair);
+		}
+
 
         glsl::parser p(actualSource.c_str(), "memory");
 

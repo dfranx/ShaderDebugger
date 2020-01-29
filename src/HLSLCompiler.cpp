@@ -12,8 +12,12 @@
 #include <hlslparser/HLSLTree.h>
 
 #include <ShaderDebugger/Utils.h>
-#include <ShaderDebugger/GLSLLibrary.h>
+#include <ShaderDebugger/HLSLLibrary.h>
 #include <ShaderDebugger/HLSLCompiler.h>
+#include <ShaderDebugger/CommonLibrary.h>
+
+#include <wgtcc/cpp.h>
+#include <sstream>
 
 namespace sd
 {
@@ -265,13 +269,26 @@ namespace sd
 	{
 	}
 
+
+	void HLSLCompiler::m_buildFuncArgPtrs()
+	{
+		m_builtInFuncsPtrs.clear();
+
+		m_builtInFuncsPtrs["modf"].push_back(1); // second argument is out
+		m_builtInFuncsPtrs["frexp"].push_back(1); // second argument is out
+		m_builtInFuncsPtrs["sincos"].push_back(1); // 2nd argument is out
+		m_builtInFuncsPtrs["sincos"].push_back(2); // 3rd argument is out
+	}
+
 	bool HLSLCompiler::Parse(ShaderType type, const std::string& source, std::string entry)
 	{
 		if (!m_isImmediate)
 			ClearDefinitions();
 		m_gen.Reset();
 
-		PropertyGetter = GLSL::Swizzle;
+		PropertyGetter = HLSL::Swizzle;
+		ObjectConstructor = Common::DefaultConstructor;
+
 		m_lastLineSaved = -1;
 		m_isSet = false;
 		m_usePointer = false;
@@ -283,10 +300,34 @@ namespace sd
 		m_currentFunction = "";
 		m_gen.SetHeader(0, 2);
 
+		m_buildFuncArgPtrs();
+
 		std::string actualSource = source;
 		if (m_isImmediate)
 			actualSource = "void immediate()\n{\nreturn " + source + ";\n}"; // the return type doesn't matter here :P
+
+		// add the user defined macros
+		pp::MacroMap macroCopy = m_macros;
+		pp::Preprocessor preprocess;
+		for (auto& pair : m_macros)
+			preprocess.AddMacro(pair.first, pair.second);
+		if (!m_isImmediate) m_macros.clear();
+
+		// preprocess
+		std::stringstream sourcePreprocessed;
+		pp::TokenSequence tokSeq;
+		preprocess.Process(actualSource, "shader.hlsl", tokSeq);
+		tokSeq.Print(sourcePreprocessed);
+		actualSource = sourcePreprocessed.str();
 		
+		// add back the user defined macros to the macro list
+		if (!m_isImmediate) {
+			m_macros = preprocess.GetMacroList();
+			for (auto& pair : macroCopy)
+				if (m_macros.count(pair.first) == 0)
+					m_macros.insert(pair);
+		}
+
 		// create allocator and logger
 		M4::Allocator allocator;
 		allocator.m_userData = NULL;
@@ -520,6 +561,7 @@ namespace sd
 		else if (expression->nodeType == M4::HLSLNodeType_MethodCall)
 		{
 			M4::HLSLMethodCall* methodCall = static_cast<M4::HLSLMethodCall*>(expression);
+
 			translateMethodCall(methodCall);
 		}
 		else if (expression->nodeType == M4::HLSLNodeType_ArrayAccess)
@@ -731,15 +773,13 @@ namespace sd
 	}
 	void HLSLCompiler::translateCastingExpression(M4::HLSLCastingExpression* expression)
 	{
-		// (VSInput)0;
+		// (VSInput)0
 		if (expression->type.baseType == M4::HLSLBaseType_UserDefined) {
 			M4::HLSLExpression* val = expression->expression;
-			if (val->nodeType == M4::HLSLNodeType_LiteralExpression) {
-				int mval = ((M4::HLSLLiteralExpression*)val)->iValue;
-				std::string sname = expression->type.typeName;
+			std::string sname = expression->type.typeName;
 
-				// TODO:
-			}
+			// just use default constructor for now
+			m_gen.Function.NewObjectByName(sname);
 		}
 		// (float)2.5f
 		else {
@@ -894,12 +934,9 @@ namespace sd
 				bool temp_usePointer = m_usePointer;
 
 				if (data.Name.empty()) {
-					/*
-					TODO: pointers for built in functions
-					if (m_builtInFuncsPtrs.count(expression->name) > 0)
-						if (std::count(m_builtInFuncsPtrs[expression->name].begin(), m_builtInFuncsPtrs[expression->name].end(), i) > 0)
+					if (m_builtInFuncsPtrs.count(expr->function->name) > 0)
+						if (std::count(m_builtInFuncsPtrs[expr->function->name].begin(), m_builtInFuncsPtrs[expr->function->name].end(), i) > 0)
 							m_usePointer = true;
-					*/
 				}
 				else if (data.Arguments[i].Storage == sd::Variable::StorageType::Out)
 					m_usePointer = true;
@@ -1272,13 +1309,8 @@ namespace sd
 			var.Smooth = true;
 			var.Flat = false;
 			var.NoPerspective = false;
-			var.Storage = Variable::StorageType::In;
+			var.Storage = Variable::StorageType::Constant;
 			var.Name = declr->name;
-
-			if (m_isInsideBuffer) {
-				if (type.flags & M4::HLSLTypeFlag_Const) var.Storage = Variable::StorageType::Constant;
-				if (type.flags & M4::HLSLTypeFlag_Static) {}
-			}
 
 			// Interpolation modifiers.
 			if (type.flags & M4::HLSLTypeFlag_Centroid) { }
@@ -1289,6 +1321,12 @@ namespace sd
 			
 			HLSLCompiler::ExpressionType expType = m_convertType(declr->type);
 			var.Type = expType.Name;
+
+			if (m_isInsideBuffer || sd::IsBasicTexture(var.Type.c_str())) {
+				var.Storage = Variable::StorageType::Uniform;
+				// if (type.flags & M4::HLSLTypeFlag_Const) var.Storage = Variable::StorageType::Constant;
+				// if (type.flags & M4::HLSLTypeFlag_Static) {}
+			}
 
 			if (m_isTypeActuallyStruct(expType))
 				m_initObjsInMain[var.Name] = var.Type;

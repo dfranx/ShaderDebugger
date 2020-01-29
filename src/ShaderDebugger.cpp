@@ -1,4 +1,5 @@
 #include <ShaderDebugger/ShaderDebugger.h>
+#include <ShaderDebugger/Utils.h>
 
 namespace sd
 {
@@ -15,16 +16,7 @@ namespace sd
 	}
 	ShaderDebugger::~ShaderDebugger()
 	{
-		if (m_stepper != nullptr)
-			bv_function_stepper_delete(m_stepper);
-		if (m_prog != nullptr)
-			bv_program_delete(m_prog);
-		if (m_compiler != nullptr)
-			delete m_compiler;
-		if (m_library != nullptr) {
-			bv_library_delete(m_library);
-			m_library = nullptr;
-		}
+		m_clear();
 	}
 	bv_variable ShaderDebugger::Execute(const std::string& func, bv_stack* args)
 	{
@@ -37,6 +29,10 @@ namespace sd
 		// call function and store its return value
 		return bv_program_call(m_prog, funcPtr, args, NULL);
 	}
+	void ShaderDebugger::AddGlobal(const std::string& varName)
+	{
+		bv_program_add_global(m_prog, varName.c_str());
+	}
 	bv_variable* ShaderDebugger::GetValue(const std::string& gvarname)
 	{
 		return bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const??
@@ -45,15 +41,19 @@ namespace sd
 	{
 		bv_program_set_global(m_prog, varName.c_str(), bv_variable_create_float(value));
 	}
-	void ShaderDebugger::SetValue(const std::string& varName, const std::string& classType, glm::vec3 val)
+	void ShaderDebugger::SetValue(const std::string& varName, const std::string& classType, glm::vec4 val)
 	{
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
 		bv_variable objVar = bv_variable_create_object(objInfo);
 		bv_object* obj = bv_variable_get_object(objVar);
 
-		bv_object_set_property(obj, "x", bv_variable_create_float(val.x));
-		bv_object_set_property(obj, "y", bv_variable_create_float(val.y));
-		bv_object_set_property(obj, "z", bv_variable_create_float(val.z));
+		bv_type vecType = sd::GetVectorTypeFromName(classType.c_str());
+		u16 cCount = objInfo->props.name_count;
+
+		if (cCount >= 1) bv_object_set_property(obj, "x", bv_variable_cast(vecType, bv_variable_create_float(val.x)));
+		if (cCount >= 2) bv_object_set_property(obj, "y", bv_variable_cast(vecType, bv_variable_create_float(val.y)));
+		if (cCount >= 3) bv_object_set_property(obj, "z", bv_variable_cast(vecType, bv_variable_create_float(val.z)));
+		if (cCount >= 4) bv_object_set_property(obj, "w", bv_variable_cast(vecType, bv_variable_create_float(val.w)));
 
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
 	}
@@ -66,6 +66,20 @@ namespace sd
 		obj->user_data = (void*)val;
 
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
+	}
+
+	void ShaderDebugger::SetArguments(bv_stack* args)
+	{
+		if (m_args != nullptr)
+			bv_stack_delete(m_args);
+
+		m_args = args;
+
+		bv_function* entryPtr = bv_program_get_function(m_prog, m_entry.c_str());
+		if (entryPtr == nullptr)
+			return;
+
+		m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, m_args);
 	}
 
 	std::string ShaderDebugger::GetCurrentFunction()
@@ -236,14 +250,14 @@ namespace sd
 	}
 	bool ShaderDebugger::StepOut()
 	{
-		std::string fcur = GetCurrentFunction(), updatedFunc;
+		std::vector<std::string> fstack = GetFunctionStack(), updatedFStack;
 
 		bool done = Step();
-		updatedFunc = GetCurrentFunction();
+		updatedFStack = GetFunctionStack();
 
-		while (updatedFunc == fcur && done) {
+		while (updatedFStack.size() >= fstack.size() && done) {
 			done = Step();
-			updatedFunc = GetCurrentFunction();
+			updatedFStack = GetFunctionStack();
 		}
 
 		return done;
@@ -252,27 +266,50 @@ namespace sd
 	{
 		m_immCompiler->ClearDefinitions();
 
-		// pass on the function definitions
+		// pass the function definitions
 		const std::vector<sd::Function>& funcs = m_compiler->GetFunctions();
 		for (const auto& func : funcs)
 			if (func.Name != m_entry)
 				m_immCompiler->AddFunctionDefinition(func);
 
-		// pass on the structure definitions
+		// pass the structure definitions
 		const std::vector<sd::Structure>& structs = m_compiler->GetStructures();
 		for (const auto& str : structs)
 			m_immCompiler->AddStructureDefinition(str);
 
-		// pass on the global definitions
+		// pass the global definitions
 		const std::vector<sd::Variable>& globals = m_compiler->GetGlobals();
 		for (const auto& glob : globals) {
 			m_immCompiler->AddGlobalDefinition(glob);
 			m_immCompiler->AddImmediateGlobalDefinition(glob);
 		}
 
+		// pass macro definitions
+		pp::MacroMap macros = m_compiler->GetMacroList();
+		for (const auto& m : macros)
+			m_immCompiler->AddMacro(m.first, m.second);
+
+		// pass arguments
+		std::string curFunc = GetCurrentFunction();
+		unsigned int locIndex = 0;
+		for (const auto& f : funcs) {
+			if (f.Name == curFunc) {
+
+				for (const auto& arg : f.Arguments) {
+					sd::Variable locData = arg;
+					locData.ID = globals.size() + locIndex;
+					m_immCompiler->AddGlobalDefinition(locData);
+					m_immCompiler->AddImmediateGlobalDefinition(locData);
+
+					locIndex++;
+				}
+
+				break;
+			}
+		}
+
 		// pass on the local variables
 		const std::vector<std::string>& locals = m_compiler->GetLocals(GetCurrentFunction());
-		unsigned int locIndex = 0;
 		for (const auto& loc : locals) {
 			sd::Variable locData;
 			locData.ID = globals.size() + locIndex;
@@ -298,6 +335,7 @@ namespace sd
 			
 			// property getter
 			immProg->property_getter = m_immCompiler->PropertyGetter;
+			immProg->default_constructor = m_immCompiler->ObjectConstructor;
 
 			// copy libraries
 			bv_program_add_library(immProg, m_library);
@@ -342,5 +380,28 @@ namespace sd
 		}
 
 		return { 0, "", {} };
+	}
+	void ShaderDebugger::m_clear()
+	{
+		if (m_compiler != nullptr)
+			delete m_compiler;
+		if (m_immCompiler != nullptr)
+			delete m_immCompiler;
+		if (m_prog != nullptr) {
+			bv_program_delete(m_prog);
+			m_prog = nullptr;
+		}
+		if (m_library != nullptr) {
+			bv_library_delete(m_library);
+			m_library = nullptr;
+		}
+		if (m_stepper != nullptr) {
+			bv_function_stepper_delete(m_stepper);
+			m_stepper = nullptr;
+		}
+		if (m_args != nullptr) {
+			bv_stack_delete(m_args);
+			m_args = nullptr;
+		}
 	}
 }

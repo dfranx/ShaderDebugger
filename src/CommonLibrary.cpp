@@ -24,6 +24,66 @@ namespace sd
 			return dbg->GetCompiler()->GetLanguage() == Compiler::Language::GLSL;
 		}
 
+		// initialize user defined structures
+		void DefaultConstructor(bv_program* prog, bv_object* obj)
+		{
+			sd::ShaderDebugger* dbg = (sd::ShaderDebugger*)prog->user_data;
+
+			const std::vector<sd::Structure>& strs = dbg->GetCompiler()->GetStructures();
+			const sd::Structure* typeData = nullptr;
+			std::string objName(obj->type->name);
+
+			for (const auto& str : strs)
+				if (str.Name == objName) {
+					typeData = &str;
+					break;
+				}
+
+			// we can get structure members
+			if (typeData != nullptr) {
+				bv_object_info* type = obj->type;
+
+				for (u16 i = 0; i < type->props.name_count; i++) {
+					std::string propName(type->props.names[i]);
+					
+					for (const auto& propData : typeData->Members) {
+						if (propData.Name == propName) {
+							bv_object_info* propObjInfo = bv_program_get_object_info(prog, propData.Type.c_str());
+							
+							// structure
+							if (propObjInfo != nullptr) {
+								obj->prop[i] = bv_variable_create_object(propObjInfo);
+								bv_object* propObj = bv_variable_get_object(obj->prop[i]);
+
+								if (!sd::IsBasicTexture(propObjInfo->name)) {
+									if (propObjInfo->ext_method_count > 0) {
+										// probably a vector or matrix
+										bv_type castType = sd::GetMatrixTypeFromName(propObjInfo->name);
+										if (castType == bv_type_void)
+											castType = sd::GetVectorTypeFromName(propObjInfo->name);
+
+										for (u16 j = 0; j < propObjInfo->props.name_count; j++)
+											propObj->prop[j] = bv_variable_cast(castType, bv_variable_create_float(0.0f));
+									}
+									else
+										DefaultConstructor(prog, propObj);
+								}
+							}
+							// scalar
+							else {
+								bv_type castType = sd::GetVariableTypeFromName(propData.Type.c_str());
+								if (castType == bv_type_void) castType = bv_type_float;
+
+								obj->prop[i] = bv_variable_cast(castType, bv_variable_create_float(0.0f));
+							}
+
+							break;
+						}
+					}
+				}
+			}
+		}
+
 		// TODO: this could've been achieved with templates, bv_type vec_type, u8 components
 		bv_variable create_float3(bv_program* prog, glm::vec3 val)
 		{
@@ -249,58 +309,34 @@ namespace sd
 			bv_type type = sd::GetVectorTypeFromName(me->type->name);
 			u8 size = me->type->props.name_count;
 
-			if (count == 0) { // gvecX()
-				for (u16 i = 0; i < me->type->props.name_count; i++)
-					me->prop[i] = bv_variable_cast(type, bv_variable_create_float(0.0f));
-			}
-			else if (count == 1) {
-				if (args[0].type == bv_type_object) { // gvecX(fvecX)
-					bv_object* vec = bv_variable_get_object(args[0]);
+			u8 propSet = 0;
+			for (u8 i = 0; i < count; i++) {
+				bv_variable* arg = &args[i];
 
-					for (u16 i = 0; i < me->type->props.name_count; i++)
-						me->prop[i] = bv_variable_cast(type, vec->prop[i]);
-				}
-				else { // gvecX(scalar)
-					for (u16 i = 0; i < me->type->props.name_count; i++)
-						me->prop[i] = bv_variable_cast(type, args[0]);
-				}
-			}
-			else if (count == size) { // vec3(2, true, 1.0f)
-				for (u16 i = 0; i < me->type->props.name_count; i++)
-					me->prop[i] = bv_variable_cast(type, args[i]);
-			}
-			else if (count == 2) {
-				if (size == 4) {
-					bv_object* vec1 = bv_variable_get_object(args[0]);
+				// vector
+				if (arg->type == bv_type_object) {
+					bv_object* vec = bv_variable_get_object(*arg);
 
-					// vec4(vec2, vec2)
-					if (args[1].type == bv_type_object) {
-						bv_object* vec2 = bv_variable_get_object(args[1]);
-
-						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
-						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
-						me->prop[2] = bv_variable_cast(type, vec2->prop[0]);
-						me->prop[3] = bv_variable_cast(type, vec2->prop[1]);
-					}
-
-					// vec4(vec3, float)
-					else {
-						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
-						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
-						me->prop[2] = bv_variable_cast(type, vec1->prop[2]);
-						me->prop[3] = bv_variable_cast(type, args[1]);
+					for (u16 i = 0; i < vec->type->props.name_count; i++) {
+						me->prop[propSet] = bv_variable_cast(type, vec->prop[i]);
+						propSet++;
 					}
 				}
-				else if (size == 3) {
-					bv_object* vec1 = bv_variable_get_object(args[0]);
-
-					// vec3(vec2, float)
-					if (args[1].type != bv_type_object) {
-						me->prop[0] = bv_variable_cast(type, vec1->prop[0]);
-						me->prop[1] = bv_variable_cast(type, vec1->prop[1]);
-						me->prop[2] = bv_variable_cast(type, args[1]);
-					}
+				// scalar
+				else {
+					me->prop[propSet] = bv_variable_cast(type, *arg);
+					propSet++;
 				}
+			}
+
+			// set all other members
+			if (propSet == 0 || (propSet != size)) {
+				bv_variable val = bv_variable_create_float(0.0f);
+				if (propSet != size && propSet != 0)
+					val = me->prop[0];
+
+				for (u8 i = propSet; i < size; i++)
+					me->prop[i] = bv_variable_cast(type, val);
 			}
 
 			return bv_variable_create_void();

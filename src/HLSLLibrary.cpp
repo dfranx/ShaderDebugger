@@ -323,7 +323,7 @@ namespace sd
 					return bv_variable_cast(bv_type_uint, args[0]);
 			}
 
-			return bv_variable_create_float(0.0f);
+			return bv_variable_create_void();
 		}
 		bv_variable lib_hlsl_asfloat(bv_program* prog, u8 count, bv_variable* args)
 		{

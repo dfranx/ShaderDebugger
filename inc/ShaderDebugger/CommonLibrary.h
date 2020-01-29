@@ -12,6 +12,7 @@ namespace sd
 	namespace Common
 	{
 		bv_variable Discard(bv_program* prog, u8 count, bv_variable* args);
+		void DefaultConstructor(bv_program* prog, bv_object* obj);
 
 		bv_variable create_float3(bv_program* prog, glm::vec3 val = glm::vec3(0.0f));
 		bv_variable create_int3(bv_program* prog, glm::ivec3 val = glm::ivec3(0));

@@ -9,7 +9,8 @@ namespace sd
 	public:
 		Variable()
 		{
-			ID = InputSlot = 0;
+			ID = 0;
+			InputSlot = -1;
 			Name = Type = "";
 			Smooth = Flat = NoPerspective = false;
 			IsArray = false;
@@ -33,7 +34,7 @@ namespace sd
 
 		size_t ID;
 
-		size_t InputSlot;
+		int InputSlot;
 
 		std::string Name;
 		std::string Type;

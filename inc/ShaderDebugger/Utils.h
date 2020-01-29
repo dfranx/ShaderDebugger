@@ -52,6 +52,7 @@ namespace sd
 
 	void GetMatrixSizeFromName(const char* name, int* cols, int* rows);
 	bv_type GetMatrixTypeFromName(const char* name);
+	bv_type GetVariableTypeFromName(const char* name);
 
 	bool IsBasicTexture(const char* name);
 	u8 GetTextureDimension(const char* name);

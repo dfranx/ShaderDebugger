@@ -720,7 +720,7 @@ namespace sd
 			std::make_pair("unpackUnorm2x16", "vec2"), std::make_pair("unpackSnorm2x16", "vec2"),
 			std::make_pair("unpackUnorm4x8", "vec4"), std::make_pair("unpackSnorm4x8", "vec4"),
 			std::make_pair("cross", "vec3"), std::make_pair("distance", "float"), std::make_pair("dot", "float"), std::make_pair("length", "float"),
-			std::make_pair("all", "bool"), std::make_pair("any", "bool"), std::make_pair("texture", "vec4"),
+			std::make_pair("all", "bool"), std::make_pair("any", "bool"), std::make_pair("texture", "vec4"), std::make_pair("texelFetch", "vec4"),
 			std::make_pair("determinant", "float"),
 		};
 		// same size, different type

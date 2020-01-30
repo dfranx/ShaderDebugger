@@ -1,12 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(ShaderDebugger)
 
-set(CMAKE_MODULE_PATH "./cmake")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ./bin)
-
 # source code
 set(SOURCES
-	main.cpp
 	src/Utils.cpp
 	src/GLSLLibrary.cpp
 	src/GLSLCompiler.cpp
@@ -68,16 +64,7 @@ set(SOURCES
 	libs/wgtcc/type.cc
 )
 
-# cmake toolchain 
-if(CMAKE_TOOLCHAIN_FILE)
-    include(${CMAKE_TOOLCHAIN_FILE})
-endif(CMAKE_TOOLCHAIN_FILE)
-
-# glm
-find_package(GLM REQUIRED)
-
-# create executable
-add_executable(ShaderDebugger ${SOURCES})
+add_library(ShaderDebugger ${SOURCES})
 
 # properties
 set_target_properties(ShaderDebugger PROPERTIES
@@ -86,12 +73,4 @@ set_target_properties(ShaderDebugger PROPERTIES
 )
 
 # include directories
-target_include_directories(ShaderDebugger PRIVATE ${GLM_INCLUDE_DIRS})
-target_include_directories(ShaderDebugger PRIVATE inc libs libs/BlueVM/inc)
-
-# link libraries
-target_link_libraries(ShaderDebugger ${GLM_LIBRARY_DIRS})
-
-if (NOT MSVC)
-	target_compile_options(ShaderDebugger PRIVATE -Wno-narrowing)
-endif()
+target_include_directories(ShaderDebugger PUBLIC inc libs libs/BlueVM/inc)

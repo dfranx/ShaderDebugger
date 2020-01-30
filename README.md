@@ -19,10 +19,9 @@ but it is MIT licensed which means that anyone can use, distribute, modify it, e
 I encourage you to integrate it into your own project! Consider sharing your (or someone's) ShaderDebugger projects here: [link](https://github.com/dfranx/ShaderDebugger/issues/2)
 
 ## Integrating
-Currently, the project has a very basic CMake file.
-If you want to add ShaderDebugger to your project, just add the ShaderDebugger's source files:
+If you want to add ShaderDebugger to your project, just add_subdirectory ShaderDebugger:
 
-For example, to clone ShaderDebugger:
+For example, first clone ShaderDebugger:
 ```bash
 git clone https://github.com/dfranx/ShaderDebugger.git
 cd ShaderDebugger
@@ -35,7 +34,10 @@ You can then add ShaderDebugger to your project:
 add_subdirectory(./path/to/your/ShaderDebugger)
 ```
 
-Variable `${SHADERDEBUGGER_SOURCE}` will now contain list of all required source files.
+After you've added it to your project, you can link it:
+```cmake
+target_link_libraries(sdbg ShaderDebugger)
+```
 
 ShaderDebugger has only one dependency: **glm**.
 

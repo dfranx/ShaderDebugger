@@ -177,15 +177,27 @@ void OutputVariableValue(bv_variable* val)
 			}
 		}
 	}
+	else if (val->type == bv_type_pointer)
+		OutputVariableValue(bv_variable_get_pointer(*val));
+	else if (val->type == bv_type_array) {
+		bv_array* arr = bv_variable_get_array(*val);
+		u16 index = 0;
+
+		// 1D arrays only
+		for (; index < arr->length[0]; index++) {
+			bv_variable arrEl = bv_array_get(*arr, &index);
+			OutputVariableValue(&arrEl);
+		}
+	}
 }
 
 int main() {
-	std::ifstream t("shader.hlsl");
+	std::ifstream t("shader.glsl");
 	std::string src((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 	t.close();
 
 	sd::ShaderDebugger dbg;
-	bool res = dbg.SetSource<sd::HLSLCompiler>(sd::ShaderType::Pixel, src, "main", NULL, sd::HLSL::Library());
+	bool res = dbg.SetSource<sd::GLSLCompiler>(sd::ShaderType::Pixel, src, "main", NULL, sd::GLSL::Library());
 	
 	if (!res) {
 		printf("[ERROR] Failed to compile the shader.\n");
@@ -275,9 +287,12 @@ int main() {
 	}
 
 
-	// 
-	//dbg.AddGlobal("gl_FragCoord");
-	//dbg.SetValue("gl_FragCoord", "vec4", glm::vec4(400, 300, 0.1f, 0.1f));
+	// gl_fragcoord
+	float fragX, fragY;
+	dbg.AddGlobal("gl_FragCoord");
+	printf("gl_FragCoord: ");
+	scanf("%f %f", &fragX, &fragY);
+	dbg.SetGlobalValue("gl_FragCoord", "vec4", glm::vec4(fragX, fragY, 0.0f, 0.0f));
 
 	// skip initialization
 	dbg.Step();

@@ -1,5 +1,0 @@
-Both:
-- test params with 'out' keyword 
-- test arrays
-- test variables with no initial value
-- test vector constructors

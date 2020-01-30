@@ -101,6 +101,7 @@ namespace sd
 		ExpressionType evaluateExpressionType(glsl::astExpression* expr);
 
 		Function matchFunction(const char* name, const std::vector<glsl::astConstantExpression*>& params);
+		std::string getReturnType(const char* name, const std::vector<glsl::astConstantExpression*>& params);
 		void generateConvert(ExpressionType etype);
 
 	private:

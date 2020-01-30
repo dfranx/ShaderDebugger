@@ -349,7 +349,7 @@ namespace sd
 			M4::HLSLType globType(glob.second.first);
 			if (globType.baseType == M4::HLSLBaseType_UserDefined)
 				globType.typeName = glob.second.second.c_str();
-
+			
 			parser.DeclareVariable(glob.first.c_str(), globType);
 		}
 		
@@ -748,12 +748,19 @@ namespace sd
 
 				for (int j = 0; j < m_func[i].Arguments.size(); j++) {
 					if (m_func[i].Arguments[j].Name == vname) {
+						bool isPtr = m_func[i].Arguments[j].Storage == sd::Variable::StorageType::Out;
+
 						if (!m_isSet) {
 							if (m_usePointer) m_gen.Function.GetArgumentPointer(j);
 							else m_gen.Function.GetArgument(j);
 						}
-						else
-							m_gen.Function.SetArgument(j);
+						else {
+							if (isPtr) {
+								m_gen.Function.GetArgument(j);
+								m_gen.Function.Assign();
+							} else
+								m_gen.Function.SetArgument(j);
+						}
 
 						found = true;
 						break;
@@ -897,11 +904,16 @@ namespace sd
 	void HLSLCompiler::translateArrayAccess(M4::HLSLArrayAccess* expr)
 	{
 		translateExpression(expr->index);
-		translateExpression(expr->array);
 
-		if (m_isSet)
+		bool temp_isSet = m_isSet;
+		m_isSet = false;
+		translateExpression(expr->array);
+		m_isSet = temp_isSet;
+
+		if (m_isSet) {
 			m_gen.Function.SetArrayElement();
-		else
+			translateExpression(expr->array);
+		} else
 			m_gen.Function.GetArrayElement();
 	}
 	void HLSLCompiler::translateFunctionCall(M4::HLSLFunctionCall* expr)
@@ -933,11 +945,13 @@ namespace sd
 			for (int i = expr->numArguments - 1; i >= 0; i--) {
 				bool temp_usePointer = m_usePointer;
 
+				// built-in funcs with 'out' keyword
 				if (data.Name.empty()) {
 					if (m_builtInFuncsPtrs.count(expr->function->name) > 0)
 						if (std::count(m_builtInFuncsPtrs[expr->function->name].begin(), m_builtInFuncsPtrs[expr->function->name].end(), i) > 0)
 							m_usePointer = true;
 				}
+				// user defined funcs with 'out' keyword
 				else if (data.Arguments[i].Storage == sd::Variable::StorageType::Out)
 					m_usePointer = true;
 
@@ -1283,7 +1297,18 @@ namespace sd
 			m_locals[m_currentFunction].push_back(declr->name);
 			m_localTypes[m_currentFunction][std::string(declr->name)] = lType.Name;
 
-			if (declr->assignment) {
+			if (declr->type.array) {
+				translateExpression(declr->type.arraySize);
+				u8 dim = 0;
+				M4::HLSLExpression* expr = declr->type.arraySize;
+				while (expr != nullptr) {
+					expr = expr->nextExpression;
+					dim++;
+				}
+				m_gen.Function.NewArray(dim);
+				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+			}
+			else if (declr->assignment) {
 				translateExpression(declr->assignment);
 
 				HLSLCompiler::ExpressionType rType = m_convertType(declr->assignment->expressionType);
@@ -1294,6 +1319,11 @@ namespace sd
 			}
 			else if (m_isTypeActuallyStruct(lType)) {
 				m_gen.Function.NewObjectByName(lType.Name);
+				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+			}
+			else {
+				m_gen.Function.PushStack(0);
+				m_generateConvert(lType);
 				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 			}
 		}

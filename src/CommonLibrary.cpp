@@ -2389,6 +2389,7 @@ namespace sd
 				for (u16 i = 0; i < vecSize; i++)
 					retObj->prop[i] = bv_variable_create_float(retData[i]);
 
+				return ret;
 			}
 			else {
 				float x = bv_variable_get_float(bv_variable_cast(bv_type_float, args[0]));
@@ -2518,11 +2519,12 @@ namespace sd
 					copyData->Data = glm::transpose(matData->Data);
 
 					bool isDouble = mat->type->name[0] == 'd';
+					bool is_glsl = isGLSL(prog);
 
-					std::string newName = "mat" + std::to_string(copyData->Columns);
-					if (copyData->Rows != copyData->Columns)
-						newName += "x" + std::to_string(copyData->Rows);
-					if (isDouble)
+					std::string newName = (is_glsl ? "mat" : "float") + std::to_string(is_glsl ? copyData->Columns : copyData->Rows);
+					if (copyData->Rows != copyData->Columns || !is_glsl)
+						newName += "x" + std::to_string(is_glsl ? copyData->Rows : copyData->Columns);
+					if (isDouble && is_glsl)
 						newName = "d" + newName;
 
 					return Common::create_mat(prog, newName.c_str(), copyData);

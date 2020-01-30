@@ -322,11 +322,20 @@ namespace sd
 
 				for (int j = 0; j < m_func[i].Arguments.size(); j++) {
 					if (m_func[i].Arguments[j].Name == vdata->name) {
+						bool isPtr = m_func[i].Arguments[j].Storage == sd::Variable::StorageType::Out;
+
 						if (!m_isSet) {
 							if (m_usePointer) m_gen.Function.GetArgumentPointer(j);
 							else m_gen.Function.GetArgument(j);
-						} else
-							m_gen.Function.SetArgument(j);
+						}
+						else {
+							if (isPtr) {
+								m_gen.Function.GetArgument(j);
+								m_gen.Function.Assign();
+							}
+							else
+								m_gen.Function.SetArgument(j);
+						}
 
 						found = true;
 						break;
@@ -484,10 +493,11 @@ namespace sd
 		else
 			m_localTypes[m_currentFunction][vdata->name] = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
 
+		GLSLCompiler::ExpressionType lType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
+
 		if (variable->initialValue) {
 			translateExpression(variable->initialValue);
 
-			GLSLCompiler::ExpressionType lType = m_convertExprType(kTypes[((glsl::astBuiltin*)vdata->baseType)->type]);
 			GLSLCompiler::ExpressionType rType = evaluateExpressionType(variable->initialValue);
 			if (lType != rType)
 				generateConvert(lType);
@@ -509,13 +519,16 @@ namespace sd
 		else {
 			std::string structName = kTypes[((glsl::astBuiltin*)vdata->baseType)->type];
 
-			if (isTypeActuallyStruct(structName)) {
-				if (!variable->initialValue) {
+			if (!variable->initialValue) {
+				if (isTypeActuallyStruct(structName)) {
 					m_gen.Function.NewObjectByName(structName, 0);
 					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
 				}
-
-				// printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
+				else {
+					m_gen.Function.PushStack(0);
+					generateConvert(lType);
+					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				}
 			}
 		}
 	}
@@ -680,6 +693,91 @@ namespace sd
 		//printf("[DEBUG] Best match: %d\n",  match_args);
 		return ret;
 	}
+	std::string GLSLCompiler::getReturnType(const char* name, const std::vector<glsl::astConstantExpression*>& params)
+	{
+		// a v hacky way to do this, but since glsl-parser doesn't do it...
+		// TODO: ShaderParser!!!
+
+
+		// list of functions that return typeof(param[0])
+		static const std::vector<std::string> sameAsFirstParamRet = {
+			"acos", "acosh", "asin", "asinh", "atan", "atanh", "cos", "cosh", "degrees", "radians", "sin", "sinh", "tan", "tanh",
+			"abs", "ceil", "clamp", "dFdx", "dFdy", "exp", "exp2", "floor", "floor", "fma", "fract", "fwidth", "inversesqrt",
+			"log", "log2", "max", "min", "mix", "mod", "modf", "pow", "round", "roundEven", "sign", "sqrt", "trunc", "frexp",
+			"ldexp", "faceforward", "normalize", "reflect", "refract", "inverse", "matrixCompMult", "bitCount", "bitfieldExtract",
+			"bitfieldInsert", "bitfieldReverse", "findLSB", "findMSB", "uaddCarry", "usubBorrow"
+		};
+		// list of functions that return typeof(param[last])
+		static const std::vector<std::string> sameAsLastParamRet = {
+			"smoothstep", "step"
+		};
+		// one return type
+		static const std::vector<std::pair<std::string, std::string>> typePairs = {
+			std::make_pair("noise1", "float"), std::make_pair("noise2", "vec2"), std::make_pair("noise3", "vec3"), std::make_pair("noise4", "vec4"),
+			std::make_pair("packDouble2x32", "double"), std::make_pair("packHalf2x16", "uint"), std::make_pair("unpackDouble2x32", "uvec2"),
+			std::make_pair("packUnorm2x16", "uint"), std::make_pair("packSnorm2x16", "uint"), std::make_pair("packHalf2x16", "vec2"),
+			std::make_pair("packUnorm4x8", "uint"), std::make_pair("packSnorm4x8", "uint"),
+			std::make_pair("unpackUnorm2x16", "vec2"), std::make_pair("unpackSnorm2x16", "vec2"),
+			std::make_pair("unpackUnorm4x8", "vec4"), std::make_pair("unpackSnorm4x8", "vec4"),
+			std::make_pair("cross", "vec3"), std::make_pair("distance", "float"), std::make_pair("dot", "float"), std::make_pair("length", "float"),
+			std::make_pair("all", "bool"), std::make_pair("any", "bool"), std::make_pair("texture", "vec4"),
+			std::make_pair("determinant", "float"),
+		};
+		// same size, different type
+		static const std::vector<std::string> sameSizeAsParamRet = {
+			"isinf", "isnan", "floatBitsToInt", "floatBitsToUint", "intBitsToFloat", "uintBitsToFloat", "equal", "notEqual"
+			"greaterThan", "greaterThanEqual", "lessThan", "lessThanEqual", "not"
+		};
+		static const std::vector<ag::Type> sameSizeAsParamRetTypes = {
+			ag::Type::UChar, ag::Type::UChar, ag::Type::Int, ag::Type::UInt, ag::Type::Float, ag::Type::Float, ag::Type::UChar, ag::Type::UChar,
+			ag::Type::UChar, ag::Type::UChar, ag::Type::UChar, ag::Type::UChar, ag::Type::UChar,
+
+		};
+
+		std::string me(name);
+
+
+		for (const auto& fname : sameAsFirstParamRet)
+			if (fname == me && params.size() > 0)
+				return evaluateExpressionType((glsl::astExpression*)params[0]).Name;
+		for (const auto& fname : sameAsLastParamRet)
+			if (fname == me && params.size() > 0)
+				return evaluateExpressionType((glsl::astExpression*)params[params.size()-1]).Name;
+		for (const auto& funcs : typePairs)
+			if (funcs.first == me)
+				return funcs.second;
+
+		for (int i = 0; i < sameSizeAsParamRet.size(); i++) {
+			if (sameSizeAsParamRet[i] == me && params.size() > 0) {
+				auto paramType = evaluateExpressionType((glsl::astExpression*)params[0]);
+				ag::Type myType = sameSizeAsParamRetTypes[i];
+				std::string ret = "";
+				
+				switch (myType) {
+				case ag::Type::Int: ret = "ivec"; break;
+				case ag::Type::UInt: ret = "uvec"; break;
+				case ag::Type::UChar: ret = "bvec"; break;
+				default: ret = "vec"; break;
+				}
+				ret += '0' + paramType.Columns;
+
+				return ret;
+			}
+		}
+
+		if (me == "transpose") {
+			auto paramType = evaluateExpressionType((glsl::astExpression*)params[0]);
+
+			int cols = paramType.Rows;
+			int rows = paramType.Columns;
+
+			std::string ret = "mat" + ('0' + cols);
+			if (cols != rows) ret += "x" + ('0' + rows);
+			
+			return ret;
+		}
+		
+	}
 
 
 	void GLSLCompiler::generateConvert(GLSLCompiler::ExpressionType etype)
@@ -711,7 +809,10 @@ namespace sd
 		case glsl::astExpression::kFunctionCall: {
 			glsl::astFunctionCall* func = (glsl::astFunctionCall*)expr;
 			Function data = matchFunction(func->name, func->parameters);
-			return m_convertExprType(data.ReturnType);
+			std::string retType = data.ReturnType;
+			if (data.Name == "")
+				retType = getReturnType(func->name, func->parameters);
+			return m_convertExprType(retType);
 		} break;
 		case glsl::astExpression::kConstructorCall: {
 			glsl::astConstructorCall* constr = (glsl::astConstructorCall*)expr;
@@ -1125,6 +1226,17 @@ namespace sd
 						return GLSLCompiler::ExpressionType(newName, newType, cols, rows);
 					}
 				}
+				// scalar * scalar
+				else {
+					std::string newName = "";
+					ag::Type newType = m_mergeBaseType(left.Type, right.Type);
+					if (newType == ag::Type::Short || newType == ag::Type::UShort) newName = "short";
+					else if (newType == ag::Type::Int) newName = "int";
+					else if (newType == ag::Type::UInt) newName = "uint";
+					else if (newType == ag::Type::UChar) newName = "bool";
+					else newName = "float";
+					return GLSLCompiler::ExpressionType(newName, newType, 1, 1);
+				}
 
 			} break;
 			case glsl::kOperator_less: return GLSLCompiler::ExpressionType("bool", ag::Type::UChar, 1, 1);
@@ -1229,11 +1341,11 @@ namespace sd
 		GLSLCompiler::ExpressionType rType = evaluateExpressionType(expression->operand2);
 
 		translateExpression(expression->operand1);
-		if (rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1)
+		if ((rType.Columns * rType.Rows > 1 && lType.Columns * lType.Rows == 1))
 			generateConvert(rType);
 
 		translateExpression(expression->operand2);
-		if (lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1)
+		if ((lType.Columns * lType.Rows > 1 && rType.Columns * rType.Rows == 1))
 			generateConvert(lType);
 
 		translateOperator(expression->operation);

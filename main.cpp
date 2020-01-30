@@ -192,6 +192,10 @@ int main() {
 		return 1;
 	}
 
+	// semantics
+	dbg.SetSemanticValue("sv_test", bv_variable_create_float(2.4f));
+
+	// texture
 	sd::Texture white;
 	white.Allocate(1, 1);
 	white.Fill(glm::vec4(0.5f, 0.1f, 0.6f, 0.2f));
@@ -209,14 +213,14 @@ int main() {
 			
 			if (sd::IsBasicTexture(global.Type.c_str())) {
 				// TODO: texture loading
-				dbg.SetValue(global.Name, global.Type , &white);
+				dbg.SetGlobalValue(global.Name, global.Type , &white);
 			} else {
 				printf("Please enter value for %s %s: ", global.Type.c_str(), global.Name.c_str());
 
 				if (global.Type == "float") {
 					float val;
 					scanf(" %f", &val);
-					dbg.SetValue(global.Name, val);
+					dbg.SetGlobalValue(global.Name, val);
 				}
 				// vectors
 				else {
@@ -231,7 +235,7 @@ int main() {
 					for (int i = 0; i < propCount; i++)
 						scanf(" %f", &inData[i]);
 
-					dbg.SetValue(global.Name, global.Type, inData);
+					dbg.SetGlobalValue(global.Name, global.Type, inData);
 				}
 				// TODO: matrix
 			}
@@ -247,6 +251,15 @@ int main() {
 			if (args.size() != 0) {
 				bv_stack argStack = bv_stack_create();
 				for (const auto& arg : args) {
+					if (!arg.Semantic.empty()) {
+						bv_variable semValue = dbg.GetSemanticValue(arg.Semantic);
+
+						if (semValue.type != bv_type_void) {
+							bv_stack_push(&argStack, semValue);
+							continue;
+						}
+					}
+
 					printf("Please enter value for %s %s: ", arg.Type.c_str(), arg.Name.c_str());
 
 					if (arg.Type == "float") {
@@ -330,7 +343,7 @@ int main() {
 			if (tokens.size() > 1) {
 				bv_variable* val = dbg.GetLocalValue(tokens[1]);
 				if (val == nullptr)
-					val = dbg.GetValue(tokens[1]);
+					val = dbg.GetGlobalValue(tokens[1]);
 
 				OutputVariableValue(val);
 			}
@@ -401,7 +414,7 @@ int main() {
 		for (const auto& gl : globals) {
 			if (gl.Storage == sd::Variable::StorageType::Out) {
 				printf("\t%s = ", gl.Name.c_str());
-				OutputVariableValue(dbg.GetValue(gl.Name));
+				OutputVariableValue(dbg.GetGlobalValue(gl.Name));
 			}
 		}
 	// }

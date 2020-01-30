@@ -92,13 +92,17 @@ namespace sd
 		inline void ClearBreakpoints() { m_breakpoints.clear(); }
 		bv_variable Immediate(const std::string& command);
 
-		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is for HLSL)
-		// this makes ShaderDebugger work without needing to know which shader language it uses
-		void SetValue(const std::string& varName, float value);
-		void SetValue(const std::string& varName, const std::string& classType, glm::vec4 val);
-		void SetValue(const std::string& varName, const std::string& classType, sd::Texture* val);
+		// semantics
+		void SetSemanticValue(const std::string& name, bv_variable var);
+		bv_variable GetSemanticValue(const std::string& name);
 
-		bv_variable* GetValue(const std::string& gvarname);
+		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is used in HLSL)
+		// this makes ShaderDebugger work without needing to know which shader language it uses
+		void SetGlobalValue(const std::string& varName, float value);
+		void SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val);
+		void SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val);
+
+		bv_variable* GetGlobalValue(const std::string& gvarname);
 
 		void AddGlobal(const std::string& varName);
 
@@ -130,5 +134,7 @@ namespace sd
 		bv_stack* m_args;
 		bv_function_stepper* m_stepper;
 		std::vector<uint8_t> m_bytecode;
+
+		std::unordered_map<std::string, bv_variable> m_semantics;
 	};
 }

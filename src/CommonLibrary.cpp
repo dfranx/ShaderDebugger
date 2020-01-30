@@ -48,6 +48,15 @@ namespace sd
 					
 					for (const auto& propData : typeData->Members) {
 						if (propData.Name == propName) {
+							// check for semantic
+							if (!propData.Semantic.empty()) {
+								bv_variable semValue = dbg->GetSemanticValue(propData.Semantic);
+								if (semValue.type != bv_type_void) {
+									obj->prop[i] = bv_variable_copy(semValue);
+									continue;
+								}
+							}
+							
 							bv_object_info* propObjInfo = bv_program_get_object_info(prog, propData.Type.c_str());
 							
 							// structure

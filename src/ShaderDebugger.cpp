@@ -33,15 +33,31 @@ namespace sd
 	{
 		bv_program_add_global(m_prog, varName.c_str());
 	}
-	bv_variable* ShaderDebugger::GetValue(const std::string& gvarname)
+	bv_variable* ShaderDebugger::GetGlobalValue(const std::string& gvarname)
 	{
 		return bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const??
 	}
-	void ShaderDebugger::SetValue(const std::string& varName, float value)
+	void ShaderDebugger::SetSemanticValue(const std::string& name, bv_variable var)
+	{
+		std::string lName = name;
+		std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
+		
+		if (m_semantics.count(lName))
+			bv_variable_deinitialize(&m_semantics[lName]);
+		
+		m_semantics[lName] = bv_variable_copy(var);
+	}
+	bv_variable ShaderDebugger::GetSemanticValue(const std::string& name)
+	{
+		std::string lName = name;
+		std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
+		return ((m_semantics.count(lName) > 0) ? m_semantics[lName] : bv_variable_create_void());
+	}
+	void ShaderDebugger::SetGlobalValue(const std::string& varName, float value)
 	{
 		bv_program_set_global(m_prog, varName.c_str(), bv_variable_create_float(value));
 	}
-	void ShaderDebugger::SetValue(const std::string& varName, const std::string& classType, glm::vec4 val)
+	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val)
 	{
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
 		bv_variable objVar = bv_variable_create_object(objInfo);
@@ -57,7 +73,7 @@ namespace sd
 
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
 	}
-	void ShaderDebugger::SetValue(const std::string& varName, const std::string& classType, sd::Texture* val)
+	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val)
 	{
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
 		bv_variable objVar = bv_variable_create_object(objInfo);
@@ -347,7 +363,7 @@ namespace sd
 
 				bv_variable* globVal = GetLocalValue(glob.Name);
 				if (globVal == nullptr)
-					globVal = GetValue(glob.Name);
+					globVal = GetGlobalValue(glob.Name);
 
 				bv_program_add_global(immProg, glob.Name.c_str());
 				bv_program_set_global(immProg, glob.Name.c_str(), globVal == nullptr ? bv_variable_create_void() : bv_variable_copy(*globVal));

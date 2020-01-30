@@ -1,5 +1,3 @@
-- [HLSL] semantics
-
 Both:
 - test params with 'out' keyword 
 - test arrays

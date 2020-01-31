@@ -46,7 +46,7 @@ void Parser::ExitFunc() {
 
 
 void Parser::EnterBlock(FuncType* funcType) {
-  curScope_ = new Scope(curScope_, S_BLOCK);
+  curScope_ = new pp::Scope(curScope_, S_BLOCK);
   if (funcType) {
     // Merge elements in param scope into current block scope
     for (auto param: funcType->Params())

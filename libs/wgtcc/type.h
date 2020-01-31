@@ -360,7 +360,7 @@ namespace pp
     public:
         static StructType* New(bool isStruct,
             bool hasTag,
-            Scope* parent);
+            pp::Scope* parent);
         virtual ~StructType() {}
         virtual StructType* ToStruct() { return this; }
         virtual const StructType* ToStruct() const { return this; }
@@ -374,7 +374,7 @@ namespace pp
         void AddBitField(Object* member, int offset);
         bool IsStruct() const { return isStruct_; }
         Object* GetMember(const std::string& member);
-        Scope* MemberMap() { return memberMap_; }
+        pp::Scope* MemberMap() { return memberMap_; }
         MemberList& Members() { return members_; }
         int Offset() const { return offset_; }
         bool HasTag() const { return hasTag_; }
@@ -383,7 +383,7 @@ namespace pp
 
     protected:
         // Default is incomplete
-        StructType(MemPool* pool, bool isStruct, bool hasTag, Scope* parent);
+        StructType(MemPool* pool, bool isStruct, bool hasTag, pp::Scope* parent);
 
         StructType(const StructType& other);
 
@@ -392,7 +392,7 @@ namespace pp
 
         bool isStruct_;
         bool hasTag_;
-        Scope* memberMap_;
+        pp::Scope* memberMap_;
 
         MemberList members_;
         int offset_;

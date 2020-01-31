@@ -185,11 +185,11 @@ namespace pp
         friend class Generator;
 
     public:
-        static CompoundStmt* New(StmtList& stmts, Scope* scope = nullptr);
+        static CompoundStmt* New(StmtList& stmts, pp::Scope* scope = nullptr);
         virtual ~CompoundStmt() {}
         virtual void Accept(Visitor* v);
         StmtList& Stmts() { return stmts_; }
-        Scope* Scope() { return scope_; }
+        pp::Scope* Scope() { return scope_; }
 
     protected:
         CompoundStmt(const StmtList& stmts, pp::Scope* scope = nullptr)
@@ -269,7 +269,7 @@ namespace pp
 
     public:
         virtual ~Expr() {}
-        Type* Type() { return type_.GetPtr(); }
+        pp::Type* Type() { return type_.GetPtr(); }
         virtual bool IsLVal() = 0;
         virtual void TypeChecking() = 0;
         void EnsureCompatible(const QualType lhs, const QualType rhs) const;
@@ -437,7 +437,7 @@ namespace pp
         ArgList* Args() { return &args_; }
         Expr* Designator() { return designator_; }
         const std::string& Name() const { return tok_->str_; }
-        FuncType* FuncType() { return designator_->Type()->ToFunc(); }
+        pp::FuncType* FuncType() { return designator_->Type()->ToFunc(); }
         virtual void TypeChecking();
 
     protected:
@@ -694,7 +694,7 @@ namespace pp
         static FuncDef* New(Identifier* ident, LabelStmt* retLabel);
         virtual ~FuncDef() {}
         virtual void Accept(Visitor* v);
-        FuncType* FuncType() { return ident_->Type()->ToFunc(); }
+        pp::FuncType* FuncType() { return ident_->Type()->ToFunc(); }
         CompoundStmt* Body() { return body_; }
         void SetBody(CompoundStmt* body) { body_ = body; }
         std::string Name() const { return ident_->Name(); }

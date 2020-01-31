@@ -116,7 +116,7 @@ namespace pp
 
     StructType* StructType::New(bool isStruct,
         bool hasTag,
-        Scope* parent) {
+        pp::Scope* parent) {
         return new (structUnionTypePool.Alloc())
             StructType(&structUnionTypePool, isStruct, hasTag, parent);
     }
@@ -332,11 +332,11 @@ namespace pp
     StructType::StructType(MemPool* pool,
         bool isStruct,
         bool hasTag,
-        Scope* parent)
+        pp::Scope* parent)
         : Type(pool, false),
         isStruct_(isStruct),
         hasTag_(hasTag),
-        memberMap_(new Scope(parent, S_BLOCK)),
+        memberMap_(new pp::Scope(parent, S_BLOCK)),
         offset_(0),
         width_(0),
         // If a struct type has no member, it gets alignment of 1

@@ -77,7 +77,7 @@ bv_variable_deinitialize(&result);
 ## Screenshots
 [SDBG](https://github.com/dfranx/sdbg) in action:
 <p align="center">
-    <img width="500" src="./misc/screen1.gif">
+    <img width="500" src="https://raw.githubusercontent.com/dfranx/sdbg/master/misc/screen1.gif">
 </p>
 
 ## Documentation

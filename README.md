@@ -82,7 +82,7 @@ bv_variable_deinitialize(&result);
 
 ## Documentation
 I am working on a website which will host documentation for ShaderDebugger and SHADERed.
-But until then, the description for most of the functions will be located here:
+But until then, function descriptions will be located here:
 #### ShaderDebugger::SetSource\<Compiler\>(stage, source, entry, args, library)
 Compiler is a class type which is used to compile the `source` into the bytecode.
 Currently only pixel and vertex stages are supported, but more might be added in future.
@@ -95,7 +95,7 @@ and all the function implementations (sin, cos, ...).
 Step 1 line.
 
 #### ShaderDebugger::StepOver()
-Steps one line but doesn't enter the functions used on that line.
+Step 1 line but don't enter the functions that are used on that line.
 
 #### ShaderDebugger::StepOut()
 Execute the code until we leave current function.
@@ -191,7 +191,7 @@ My e-mail address for businesses (or if you just want to contact me):
 **dfranx00 at gmail dot com**
 
 ## TODO
-Here is the list of features/bugfixes:
+Here is the list of features/bugfixes that I need to do:
 
 ### GLSL
 - interface blocks

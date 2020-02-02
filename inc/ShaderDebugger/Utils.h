@@ -2,6 +2,7 @@
 
 #include <ShaderDebugger/Matrix.h>
 #include <glm/glm.hpp>
+#include <stdexcept>
 
 extern "C" {
 	#include <BlueVM.h>
@@ -17,6 +18,10 @@ namespace sd
 		if (var.type == bv_type_object) {
 			bv_object* obj = bv_variable_get_object(var);
 			bv_type type = obj->prop[0].type;
+
+            if (obj->type->props.name_count != c) {
+                throw std::runtime_error("Mismatch: Can't convert type " + std::string(obj->type->name) + " to type vec" + std::to_string(c));
+            }
 
 			if (type == bv_type_int)
 				for (u16 i = 0; i < obj->type->props.name_count; i++)

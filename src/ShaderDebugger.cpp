@@ -20,6 +20,7 @@ namespace sd
 	}
 	bv_variable ShaderDebugger::Execute(const std::string& func, bv_stack* args)
 	{
+	    if (m_prog == nullptr) throw no_program_exception();
 		bv_function* funcPtr = bv_program_get_function(m_prog, func.c_str());
 		if (funcPtr == nullptr)
 			return bv_variable_create_void(); // function doesn't exist
@@ -31,11 +32,15 @@ namespace sd
 	}
 	void ShaderDebugger::AddGlobal(const std::string& varName)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		bv_program_add_global(m_prog, varName.c_str());
 	}
 	bv_variable* ShaderDebugger::GetGlobalValue(const std::string& gvarname)
 	{
-		return bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const??
+        if (m_prog == nullptr) throw no_program_exception();
+        bv_variable* val = bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const??
+        if (val == nullptr) throw not_found_exception(gvarname);
+		return val;
 	}
 	void ShaderDebugger::SetSemanticValue(const std::string& name, bv_variable var)
 	{
@@ -55,11 +60,14 @@ namespace sd
 	}
 	void ShaderDebugger::SetGlobalValue(const std::string& varName, float value)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		bv_program_set_global(m_prog, varName.c_str(), bv_variable_create_float(value));
 	}
 	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
+		if (objInfo == nullptr) throw not_found_exception(classType);
 		bv_variable objVar = bv_variable_create_object(objInfo);
 		bv_object* obj = bv_variable_get_object(objVar);
 
@@ -75,7 +83,9 @@ namespace sd
 	}
 	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
+        if (objInfo == nullptr) throw not_found_exception(classType);
 		bv_variable objVar = bv_variable_create_object(objInfo);
 		bv_object* obj = bv_variable_get_object(objVar);
 
@@ -86,6 +96,7 @@ namespace sd
 
 	void ShaderDebugger::SetArguments(bv_stack* args)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		if (m_args != nullptr)
 			bv_stack_delete(m_args);
 
@@ -153,7 +164,7 @@ namespace sd
 				u32 index = bv_scope_get_locals_start(scope) + i;
 
 				if (index >= scope->locals.length)
-					return nullptr;
+					throw not_found_exception(varname);
 
 				return &scope->locals.data[index];
 			}
@@ -163,11 +174,11 @@ namespace sd
 				u32 index = bv_scope_get_locals_start(scope)+i+argList.size();
 
 				if (index >= scope->locals.length)
-					return nullptr;
+                    throw not_found_exception(varname);
 				
 				return &scope->locals.data[index];
 			}
-		return nullptr;
+        throw not_found_exception(varname);
 	}
 	void ShaderDebugger::Jump(int line)
 	{
@@ -233,6 +244,7 @@ namespace sd
 	}
 	bool ShaderDebugger::Step()
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		bool done = bv_function_stepper_is_done(m_stepper);
 		if (!done) {
 			int curLine = m_prog->current_line;
@@ -280,6 +292,7 @@ namespace sd
 	}
 	bv_variable ShaderDebugger::Immediate(const std::string& src)
 	{
+        if (m_prog == nullptr) throw no_program_exception();
 		m_immCompiler->ClearDefinitions();
 
 		// pass the function definitions

@@ -3,7 +3,9 @@
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Breakpoint.h>
 #include <ShaderDebugger/CommonLibrary.h>
+#include <ShaderDebugger/Exceptions.h>
 #include <glm/glm.hpp>
+
 
 #include <fstream>
 
@@ -20,7 +22,7 @@ namespace sd
 		~ShaderDebugger();
 
 		template<typename CodeCompiler>
-		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
+		void SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
 		{
 			m_clear();
 
@@ -45,7 +47,7 @@ namespace sd
 			if (done && m_bytecode.size() > 0) {
 				m_prog = bv_program_create(m_bytecode.data());
 				if (m_prog == nullptr)
-					return false; // invalid bytecode
+					throw runtime_error("Invalid Bytecode");
 
 				m_prog->user_data = (void*)this;
 				bv_program_add_function(m_prog, "$$discard", Common::Discard);
@@ -55,15 +57,13 @@ namespace sd
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
 				if (entryPtr == nullptr)
-					return false;
+					throw runtime_error("Entry function not found");
 
 				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, m_args);
 				
 				if (m_library != nullptr)
 					bv_program_add_library(m_prog, library);
-			} else return false;
-
-			return true;
+			} else throw invalid_shader_exception();
 		}
 
 		inline Compiler* GetCompiler() { return m_compiler; }

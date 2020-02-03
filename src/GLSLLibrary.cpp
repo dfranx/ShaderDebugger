@@ -21,7 +21,6 @@ namespace sd
 				- interpolateAtCentroid, interpolateAtOffset, interpolateAtSample, textureGatherOffsets, textureGrad, textureGradOffset, textureProjGrad, textureProjGradOffset, textureQueryLod, textureSamples
 				- double type & (un)packDouble2x32
 				- LOD calculation, or have a ShaderDebugger::LOD which the user can set?
-				- reimplement noise functions so that they follow the "rules"
 				- geometry and compute (image, atomic, memory barriers) shader functions
 		*/
 
@@ -91,54 +90,21 @@ namespace sd
 		}
 
 		/* noise */
-		static FastNoise lib_glsl_noiseGenerator; // I know... this takes least time, i'll have to reimplement noise functions anyway
 		float noise1(glm::vec4 pos)
 		{
-			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
-			lib_glsl_noiseGenerator.SetSeed(40000);
-			return lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
+			return 0.0f;
 		}
 		glm::vec2 noise2(glm::vec4 pos)
 		{
-			glm::vec2 ret(0.0f);
-
-			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
-			lib_glsl_noiseGenerator.SetSeed(40000);
-			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(41000);
-			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-
-			return ret;
+			return glm::vec2(0.0f);
 		}
 		glm::vec3 noise3(glm::vec4 pos)
 		{
-			glm::vec3 ret(0.0f);
-
-			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
-			lib_glsl_noiseGenerator.SetSeed(40000);
-			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(41000);
-			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(42000);
-			ret.z = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-
-			return ret;
+			return glm::vec3(0.0f);
 		}
 		glm::vec4 noise4(glm::vec4 pos)
 		{
-			glm::vec4 ret(0.0f);
-
-			lib_glsl_noiseGenerator.SetNoiseType(FastNoise::NoiseType::WhiteNoise);
-			lib_glsl_noiseGenerator.SetSeed(40000);
-			ret.x = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(41000);
-			ret.y = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(42000);
-			ret.z = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-			lib_glsl_noiseGenerator.SetSeed(43000);
-			ret.w = lib_glsl_noiseGenerator.GetWhiteNoise(pos.x, pos.y, pos.z, pos.w);
-
-			return ret;
+			return glm::vec4(0.0f);
 		}
 
 		/* trigonometry */

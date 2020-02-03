@@ -1,5 +1,6 @@
 #include <ShaderDebugger/ShaderDebugger.h>
 #include <ShaderDebugger/Utils.h>
+#include <assert.h>
 
 namespace sd
 {
@@ -20,6 +21,8 @@ namespace sd
 	}
 	bv_variable ShaderDebugger::Execute(const std::string& func, bv_stack* args)
 	{
+		assert(m_prog != nullptr);
+
 		bv_function* funcPtr = bv_program_get_function(m_prog, func.c_str());
 		if (funcPtr == nullptr)
 			return bv_variable_create_void(); // function doesn't exist
@@ -31,11 +34,15 @@ namespace sd
 	}
 	void ShaderDebugger::AddGlobal(const std::string& varName)
 	{
+		assert(m_prog != nullptr);
+
 		bv_program_add_global(m_prog, varName.c_str());
 	}
 	bv_variable* ShaderDebugger::GetGlobalValue(const std::string& gvarname)
 	{
-		return bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const??
+		assert(m_prog != nullptr);
+
+		return bv_program_get_global(m_prog, const_cast<char*>(gvarname.c_str())); // TODO: why does get_global need non const???
 	}
 	void ShaderDebugger::SetSemanticValue(const std::string& name, bv_variable var)
 	{
@@ -55,39 +62,61 @@ namespace sd
 	}
 	void ShaderDebugger::SetGlobalValue(const std::string& varName, float value)
 	{
+		assert(m_prog != nullptr);
+
 		bv_program_set_global(m_prog, varName.c_str(), bv_variable_create_float(value));
 	}
-	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val)
+	bool ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val)
 	{
+		assert(m_prog != nullptr);
+
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
+		if (objInfo == nullptr) {
+			m_error = "The object definition for \'" + classType + "\' doesn't exist.";
+			return false;
+		}
+
 		bv_variable objVar = bv_variable_create_object(objInfo);
 		bv_object* obj = bv_variable_get_object(objVar);
 
 		bv_type vecType = sd::GetVectorTypeFromName(classType.c_str());
 		u16 cCount = objInfo->props.name_count;
 
-		if (cCount >= 1) bv_object_set_property(obj, "x", bv_variable_cast(vecType, bv_variable_create_float(val.x)));
-		if (cCount >= 2) bv_object_set_property(obj, "y", bv_variable_cast(vecType, bv_variable_create_float(val.y)));
-		if (cCount >= 3) bv_object_set_property(obj, "z", bv_variable_cast(vecType, bv_variable_create_float(val.z)));
-		if (cCount >= 4) bv_object_set_property(obj, "w", bv_variable_cast(vecType, bv_variable_create_float(val.w)));
+		for (u16 i = 0; i < cCount; i++)
+			obj->prop[i] = bv_variable_cast(vecType, bv_variable_create_float(val[i]));
 
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
+
+		return true;
 	}
-	void ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val)
+	bool ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val)
 	{
+		assert(m_prog != nullptr);
+
 		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
+		if (objInfo == nullptr) {
+			m_error = "The object definition for \'" + classType + "\' doesn't exist.";
+			return false;
+		}
+
 		bv_variable objVar = bv_variable_create_object(objInfo);
 		bv_object* obj = bv_variable_get_object(objVar);
 
 		obj->user_data = (void*)val;
 
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
+
+		return true;
 	}
 
 	void ShaderDebugger::SetArguments(bv_stack* args)
 	{
+		assert(m_prog != nullptr);
+
 		if (m_args != nullptr)
 			bv_stack_delete(m_args);
+		if (m_stepper != nullptr)
+			bv_function_stepper_delete(m_stepper);
 
 		m_args = args;
 
@@ -100,6 +129,8 @@ namespace sd
 
 	std::string ShaderDebugger::GetCurrentFunction()
 	{
+		assert(m_stepper != nullptr);
+
 		if (m_stepper->scope->count == 0)
 			return "";
 
@@ -115,6 +146,8 @@ namespace sd
 	}
 	std::vector<std::string> ShaderDebugger::GetFunctionStack()
 	{
+		assert(m_stepper != nullptr);
+
 		if (m_stepper->scope->count == 0)
 			return std::vector<std::string>();
 			
@@ -136,6 +169,8 @@ namespace sd
 	}
 	std::vector<std::string> ShaderDebugger::GetCurrentFunctionLocals()
 	{
+		assert(m_compiler != nullptr);
+
 		std::string curFunc = GetCurrentFunction();
 		if (curFunc.size() == 0)
 			return std::vector<std::string>();
@@ -143,6 +178,9 @@ namespace sd
 	}
 	bv_variable* ShaderDebugger::GetLocalValue(const std::string& varname)
 	{
+		assert(m_compiler != nullptr);
+		assert(m_stepper != nullptr);
+
 		bv_scope* scope = m_stepper->scope;
 		std::string curFunc = GetCurrentFunction();
 		const auto& locList = m_compiler->GetLocals(curFunc);
@@ -233,6 +271,8 @@ namespace sd
 	}
 	bool ShaderDebugger::Step()
 	{
+		assert(m_stepper != nullptr);
+
 		bool done = bv_function_stepper_is_done(m_stepper);
 		if (!done) {
 			int curLine = m_prog->current_line;
@@ -280,6 +320,8 @@ namespace sd
 	}
 	bv_variable ShaderDebugger::Immediate(const std::string& src)
 	{
+		assert(m_immCompiler != nullptr);
+
 		m_immCompiler->ClearDefinitions();
 
 		// pass the function definitions

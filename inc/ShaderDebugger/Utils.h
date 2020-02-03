@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ShaderDebugger/Matrix.h>
+#include <algorithm>
 #include <glm/glm.hpp>
 
 extern "C" {
@@ -17,18 +18,19 @@ namespace sd
 		if (var.type == bv_type_object) {
 			bv_object* obj = bv_variable_get_object(var);
 			bv_type type = obj->prop[0].type;
+			u16 compCount = std::min(obj->type->props.name_count, c);
 
 			if (type == bv_type_int)
-				for (u16 i = 0; i < obj->type->props.name_count; i++)
+				for (u16 i = 0; i < compCount; i++)
 					ret[i] = bv_variable_get_int(obj->prop[i]);
 			else if (type == bv_type_uint)
-				for (u16 i = 0; i < obj->type->props.name_count; i++)
+				for (u16 i = 0; i < compCount; i++)
 					ret[i] = bv_variable_get_uint(obj->prop[i]);
 			else if (type == bv_type_uchar)
-				for (u16 i = 0; i < obj->type->props.name_count; i++)
+				for (u16 i = 0; i < compCount; i++)
 					ret[i] = bv_variable_get_uchar(obj->prop[i]);
 			else
-				for (u16 i = 0; i < obj->type->props.name_count; i++)
+				for (u16 i = 0; i < compCount; i++)
 					ret[i] = bv_variable_get_float(obj->prop[i]);
 		}
 		else if (var.type == bv_type_int)

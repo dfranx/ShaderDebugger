@@ -1,7 +1,7 @@
 # ShaderDebugger
 
 ShaderDebugger is a cross platform C++ library that can be used to debug GLSL and HLSL shaders.
-It has various plenty of cool features: conditional breakpoints, step-by-step debugging, executing expressions on the fly, get variable values, etc...
+It has plenty of cool features: conditional breakpoints, step-by-step debugging, executing expressions on the fly, get variable values, etc...
 We will describe each of those in more details later in this README file.
 
 ShaderDebugger let's you see what actually happens in your shaders without having to use #ifs or some other tricks.
@@ -43,7 +43,7 @@ ShaderDebugger has only one dependency: **glm**.
 
 ## Example
 ```c++
-std::string src = ... your shader code ...;
+std::string src = "... your shader code ...";
 
 sd::ShaderDebugger dbg;
 dbg.SetSource<sd::GLSLCompiler>(sd::ShaderType::Pixel, src, "main", NULL, sd::GLSL::Library());
@@ -90,6 +90,8 @@ Currently only pixel and vertex stages are supported, but more might be added in
 and all the function implementations (sin, cos, ...).
 `sd::HLSLCompiler` and `sd::HLSL::Library()` are used for HLSL shaders, while 
 `sd::GLSLCompiler` and `sd::GLSL::Library()` are used for GLSL shaders.
+`SetSource` returns false when an error occurs. To get the error message use `GetLastError()`.
+If an error occurs, please refrain from calling any other ShaderDebugger methods as they will cause a crash.
 
 #### ShaderDebugger::Step()
 Step 1 line.
@@ -101,7 +103,7 @@ Step 1 line but don't enter the functions that are used on that line.
 Execute the code until we leave current function.
 
 #### ShaderDebugger::Immediate(expression)
-Execute an expression and return it's result. Example: `bv_variable var = dbg.Immediate("acc + sin(tex.Sample(smp, uv).x)");`
+Execute an expression and return it's value. Example: `bv_variable var = dbg.Immediate("acc + sin(tex.Sample(smp, uv).x)");`
 
 #### ShaderDebugger::AddBreakpoint(line)
 Add a basic breakpoint on the provided line.
@@ -112,10 +114,10 @@ Add a conditional breakpoint on the provided line. Example: `dbg.AddConditionalB
 #### ShaderDebugger::Execute(function, args)
 This method runs some function defined in the shader code.
 Example: `dbg.Execute("someRandomFunction", NULL)`.
-This way you can test some other functions manually, without having to run the whole main()/entry function.
+This way you can test some other functions manually without having to run the whole main()/entry function.
 
-Call with no arguments to execute the entry function. Even though it is possible to render the whole scene using ShaderDebugger,
-I suggest that you do not do that. It would take ages. ShaderDebugger/BlueVM need to be improved quite a lot for this to be plausible.
+Call `Execute()` with no arguments to execute the entry function. Even though it is possible to render the whole scene using ShaderDebugger,
+I suggest that you do not do that. It would take ages. ShaderDebugger/BlueVM need to improve quite a lot for this to be plausible.
 
 #### ShaderDebugger::GetCurrentFunction()
 Returns the name of the function which is currently being executed.
@@ -129,6 +131,7 @@ Get list of all local variable names used in the current function
 #### ShaderDebugger::GetLocalValue(varname)
 Get a value of the local variable that has the same name as the provided one.
 Example: `bv_variable* var = dbg.GetLocalValue("tempColor")`.
+If a variable with such name doesn't exist, GetLocalValue will return nullptr.
 
 #### ShaderDebugger::GetCurrentLine()
 Get the number of line on which the `internal stepper` is located on.
@@ -137,7 +140,9 @@ Get the number of line on which the `internal stepper` is located on.
 Make the `internal stepper` jump to the provided line.
 
 #### ShaderDebugger::Continue()
-Run the code until we hit some breakpoint.
+Run the code until we hit some breakpoint or exit the entry function.
+If ShaderDebugger hit a breakpoint when stepping through the code, it will automatically stop and Continue() will return `true`.
+Otherwise, it will execute whole code and return `false`.
 
 #### ShaderDebugger::SetSemanticValue(semantic, value)
 Bind a value to a certain semantic string. Example: `dbg.SetSemanticValue("SV_Depth", bv_variable_create_float(0.1f));`

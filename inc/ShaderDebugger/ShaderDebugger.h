@@ -19,10 +19,12 @@ namespace sd
 		ShaderDebugger();
 		~ShaderDebugger();
 
-		template<typename CodeCompiler>
+		template <typename CodeCompiler>
 		bool SetSource(sd::ShaderType stage, const std::string& src, const std::string& entry, bv_stack* args = NULL, bv_library* library = NULL)
 		{
 			m_clear();
+
+			m_error = "";
 
 			m_compiler = new CodeCompiler();
 			m_compiler->SetImmediate(false);
@@ -44,9 +46,10 @@ namespace sd
 
 			if (done && m_bytecode.size() > 0) {
 				m_prog = bv_program_create(m_bytecode.data());
-				if (m_prog == nullptr)
+				if (m_prog == nullptr) {
+					m_error = "Invalid bytecode.";
 					return false; // invalid bytecode
-
+				}
 				m_prog->user_data = (void*)this;
 				bv_program_add_function(m_prog, "$$discard", Common::Discard);
 
@@ -54,14 +57,19 @@ namespace sd
 				m_prog->default_constructor = m_compiler->ObjectConstructor;
 					
 				bv_function* entryPtr = bv_program_get_function(m_prog, entry.c_str());
-				if (entryPtr == nullptr)
+				if (entryPtr == nullptr) {
+					m_error = "Failed to locate entry function.";
 					return false;
+				}
 
 				m_stepper = bv_function_stepper_create(m_prog, entryPtr, NULL, m_args);
 				
 				if (m_library != nullptr)
 					bv_program_add_library(m_prog, library);
-			} else return false;
+			} else {
+				m_error = "Failed to compile the program.";
+				return false;
+			}
 
 			return true;
 		}
@@ -99,8 +107,8 @@ namespace sd
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is used in HLSL)
 		// this makes ShaderDebugger work without needing to know which shader language it uses
 		void SetGlobalValue(const std::string& varName, float value);
-		void SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val);
-		void SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val);
+		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val);
+		bool SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val);
 
 		bv_variable* GetGlobalValue(const std::string& gvarname);
 
@@ -115,6 +123,7 @@ namespace sd
 			}
 		}
 		inline bool IsDiscarded() { return m_discarded; }
+		inline std::string GetLastError() { return m_error; }
 
 	private:
 		bool m_checkBreakpoint(int line);
@@ -125,6 +134,8 @@ namespace sd
 		bool m_discarded;
 
 		std::vector<Breakpoint> m_breakpoints;
+
+		std::string m_error;
 
 		sd::ShaderType m_type;
 		Compiler* m_compiler, *m_immCompiler;

@@ -106,9 +106,19 @@ namespace sd
 
 		// for more complex types, we need to provide classType (for example, vec3 is for GLSL but float3 is used in HLSL)
 		// this makes ShaderDebugger work without needing to know which shader language it uses
+		void SetGlobalValue(const std::string& varName, bv_variable value);
 		void SetGlobalValue(const std::string& varName, float value);
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val);
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val);
+		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::mat4 val);
+		template <size_t c, typename t>
+		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec<c, t, glm::defaultp> val)
+		{
+			glm::vec4 actualVal(0.0f);
+			for (size_t i = 0; i < c; i++)
+				actualVal[i] = val[i];
+			SetGlobalValue(varName, classType, actualVal);
+		}
 
 		bv_variable* GetGlobalValue(const std::string& gvarname);
 

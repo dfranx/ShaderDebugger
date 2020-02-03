@@ -60,6 +60,14 @@ namespace sd
 		std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
 		return ((m_semantics.count(lName) > 0) ? m_semantics[lName] : bv_variable_create_void());
 	}
+	void ShaderDebugger::SetGlobalValue(const std::string& varName, bv_variable value)
+	{
+		bv_variable* glob = bv_program_get_global(m_prog, varName.c_str());
+		if (glob != nullptr) {
+			bv_variable_deinitialize(glob);
+			*glob = bv_variable_copy(value); // don't take control of user allocate memory, rather copy it
+		}
+	}
 	void ShaderDebugger::SetGlobalValue(const std::string& varName, float value)
 	{
 		assert(m_prog != nullptr);
@@ -107,6 +115,23 @@ namespace sd
 		bv_program_set_global(m_prog, varName.c_str(), objVar);
 
 		return true;
+	}
+	bool ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::mat4 val)
+	{
+		int cols = 0, rows = 0;
+		sd::GetMatrixSizeFromName(classType.c_str(), &cols, &rows);
+
+		if (cols != 0 && rows != 0) {
+			bv_variable* glob = bv_program_get_global(m_prog, varName.c_str());
+			if (glob != nullptr) {
+				bv_variable_deinitialize(glob);
+				*glob = Common::create_mat(m_prog, classType.c_str(), new sd::Matrix(val, cols, rows)); // I know that passing pointers and then deleting them somewhere else is bad practice...
+
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	void ShaderDebugger::SetArguments(bv_stack* args)
@@ -228,7 +253,7 @@ namespace sd
 		while (Step()) {
 			if (m_checkBreakpoint(GetCurrentLine()))
 				return true;
-		};
+		}
 		return false;
 	}
 	bool ShaderDebugger::m_checkBreakpoint(int line)

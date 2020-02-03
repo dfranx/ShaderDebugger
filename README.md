@@ -36,7 +36,7 @@ add_subdirectory(./path/to/your/ShaderDebugger)
 
 After you've added it to your project, you can link it:
 ```cmake
-target_link_libraries(sdbg ShaderDebugger)
+target_link_libraries(your_project ShaderDebugger)
 ```
 
 ShaderDebugger has only one dependency: **glm**.

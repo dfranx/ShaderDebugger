@@ -48,9 +48,6 @@ set(SOURCES
 	libs/BlueVM/src/bv_variable.c
 	libs/BlueVM/src/types.c
 
-# FastNoise
-	libs/FastNoise/FastNoise.cpp
-
 # preprocessor
 	libs/wgtcc/ast.cc
 	libs/wgtcc/cpp.cc

@@ -18,7 +18,7 @@ namespace sd
 		if (var.type == bv_type_object) {
 			bv_object* obj = bv_variable_get_object(var);
 			bv_type type = obj->prop[0].type;
-			u16 compCount = std::min(obj->type->props.name_count, c);
+			u16 compCount = std::min<u16>(obj->type->props.name_count, c);
 
 			if (type == bv_type_int)
 				for (u16 i = 0; i < compCount; i++)

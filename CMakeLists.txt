@@ -61,7 +61,13 @@ set(SOURCES
 	libs/wgtcc/type.cc
 )
 
+# glm
+find_package(GLM REQUIRED)
+
 add_library(ShaderDebugger ${SOURCES})
+
+# link libraries
+target_link_libraries(ShaderDebugger ${GLM_LIBRARY_DIRS})
 
 # properties
 set_target_properties(ShaderDebugger PROPERTIES
@@ -70,4 +76,4 @@ set_target_properties(ShaderDebugger PROPERTIES
 )
 
 # include directories
-target_include_directories(ShaderDebugger PUBLIC inc libs libs/BlueVM/inc)
+target_include_directories(ShaderDebugger PUBLIC inc libs libs/BlueVM/inc ${GLM_INCLUDE_DIRS})

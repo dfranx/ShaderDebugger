@@ -63,7 +63,7 @@ void Parser::Parse() {
 
 void Parser::ParseTranslationUnit() {
   while (!ts_.Peek()->IsEOF()) {
-    if (ts_.Try(Token::STATIC_ASSERT)) {
+    if (ts_.Try(Token::WTOK_STATIC_ASSERT)) {
       ParseStaticAssert();
       continue;
     } else if (ts_.Try(';')) {
@@ -164,7 +164,7 @@ Expr* Parser::ParsePrimaryExpr() {
     return ParseConstant(tok);
   } else if (tok->IsLiteral()) {
     return ConcatLiterals(tok);
-  } else if (tok->tag_ == Token::GENERIC) {
+  } else if (tok->tag_ == Token::WTOK_GENERIC) {
     return ParseGeneric();
   }
 
@@ -188,7 +188,7 @@ Constant* Parser::ConcatLiterals(const Token* tok) {
   auto val = new std::string;
   auto enc = Scanner(tok).ScanLiteral(*val);
   ConvertLiteral(*val, enc);
-  while (ts_.Test(Token::LITERAL)) {
+  while (ts_.Test(Token::WTOK_LITERAL)) {
     auto nextTok = ts_.Next();
     std::string nextVal;
     auto nextEnc = Scanner(nextTok).ScanLiteral(nextVal);
@@ -226,9 +226,9 @@ Encoding Parser::ParseLiteral(std::string& str, const Token* tok) {
 Constant* Parser::ParseConstant(const Token* tok) {
   assert(tok->IsConstant());
 
-  if (tok->tag_ == Token::I_CONSTANT) {
+  if (tok->tag_ == Token::WTOK_I_CONSTANT) {
     return ParseInteger(tok);
-  } else if (tok->tag_ == Token::C_CONSTANT) {
+  } else if (tok->tag_ == Token::WTOK_C_CONSTANT) {
     return ParseCharacter(tok);
   } else {
     return ParseFloat(tok);
@@ -346,7 +346,7 @@ Expr* Parser::ParseGeneric() {
   Expr* selectedExpr = nullptr;
   bool isDefault = false;
   while (true) {
-    if (ts_.Try(Token::DEFAULT)) {
+    if (ts_.Try(Token::WTOK_DEFAULT)) {
       ts_.Expect(':');
       auto defaultExpr = ParseAssignExpr();
       if (!selectedExpr) {
@@ -430,11 +430,11 @@ Expr* Parser::ParsePostfixExprTail(Expr* lhs) {
     switch (tok->tag_) {
     case '[': lhs = ParseSubScripting(lhs); break;
     case '(': lhs = ParseFuncCall(lhs); break;
-    case Token::PTR: lhs = UnaryOp::New(Token::DEREF, lhs);
+    case Token::WTOK_PTR: lhs = UnaryOp::New(Token::WTOK_DEREF, lhs);
     // Fall through
     case '.': lhs = ParseMemberRef(tok, '.', lhs); break;
-    case Token::INC:
-    case Token::DEC: lhs = ParsePostfixIncDec(tok, lhs); break;
+    case Token::WTOK_INC:
+    case Token::WTOK_DEC: lhs = ParsePostfixIncDec(tok, lhs); break;
     default: ts_.PutBack(); return lhs;
     }
   }
@@ -446,13 +446,13 @@ Expr* Parser::ParseSubScripting(Expr* lhs) {
   auto tok = ts_.Peek();
   ts_.Expect(']');
   auto operand = BinaryOp::New(tok, '+', lhs, rhs);
-  return UnaryOp::New(Token::DEREF, operand);
+  return UnaryOp::New(Token::WTOK_DEREF, operand);
 }
 
 
 BinaryOp* Parser::ParseMemberRef(const Token* tok, int op, Expr* lhs) {
   auto memberName = ts_.Peek()->str_;
-  ts_.Expect(Token::IDENTIFIER);
+  ts_.Expect(Token::WTOK_IDENTIFIER);
 
   auto structUnionType = lhs->Type()->ToStruct();
   if (structUnionType == nullptr) {
@@ -470,8 +470,8 @@ BinaryOp* Parser::ParseMemberRef(const Token* tok, int op, Expr* lhs) {
 
 
 UnaryOp* Parser::ParsePostfixIncDec(const Token* tok, Expr* operand) {
-  auto op = tok->tag_ == Token::INC ?
-            Token::POSTFIX_INC: Token::POSTFIX_DEC;
+  auto op = tok->tag_ == Token::WTOK_INC ?
+            Token::WTOK_POSTFIX_INC: Token::WTOK_POSTFIX_DEC;
   return UnaryOp::New(op, operand);
 }
 
@@ -491,14 +491,14 @@ FuncCall* Parser::ParseFuncCall(Expr* designator) {
 Expr* Parser::ParseUnaryExpr() {
   auto tok = ts_.Next();
   switch (tok->tag_) {
-  case Token::ALIGNOF: return ParseAlignof();
-  case Token::SIZEOF: return ParseSizeof();
-  case Token::INC: return ParsePrefixIncDec(tok);
-  case Token::DEC: return ParsePrefixIncDec(tok);
-  case '&': return ParseUnaryOp(tok, Token::ADDR);
-  case '*': return ParseUnaryOp(tok, Token::DEREF);
-  case '+': return ParseUnaryOp(tok, Token::PLUS);
-  case '-': return ParseUnaryOp(tok, Token::MINUS);
+  case Token::WTOK_ALIGNOF: return ParseAlignof();
+  case Token::WTOK_SIZEOF: return ParseSizeof();
+  case Token::WTOK_INC: return ParsePrefixIncDec(tok);
+  case Token::WTOK_DEC: return ParsePrefixIncDec(tok);
+  case '&': return ParseUnaryOp(tok, Token::WTOK_ADDR);
+  case '*': return ParseUnaryOp(tok, Token::WTOK_DEREF);
+  case '+': return ParseUnaryOp(tok, Token::WTOK_PLUS);
+  case '-': return ParseUnaryOp(tok, Token::WTOK_MINUS);
   case '~': return ParseUnaryOp(tok, '~');
   case '!': return ParseUnaryOp(tok, '!');
   default:
@@ -541,10 +541,10 @@ Constant* Parser::ParseAlignof() {
 
 
 UnaryOp* Parser::ParsePrefixIncDec(const Token* tok) {
-  assert(tok->tag_ == Token::INC || tok->tag_ == Token::DEC);
+  assert(tok->tag_ == Token::WTOK_INC || tok->tag_ == Token::WTOK_DEC);
 
-  auto op = tok->tag_ == Token::INC ?
-            Token::PREFIX_INC: Token::PREFIX_DEC;
+  auto op = tok->tag_ == Token::WTOK_INC ?
+            Token::WTOK_PREFIX_INC: Token::WTOK_PREFIX_DEC;
   auto operand = ParseUnaryExpr();
   return UnaryOp::New(op, operand);
 }
@@ -574,7 +574,7 @@ Expr* Parser::ParseCastExpr() {
       return ParsePostfixExprTail(anony);
     }
     auto operand = ParseCastExpr();
-    return UnaryOp::New(Token::CAST, operand, type);
+    return UnaryOp::New(Token::WTOK_CAST, operand, type);
   }
 
   ts_.PutBack();
@@ -615,7 +615,7 @@ Expr* Parser::ParseAdditiveExpr() {
 Expr* Parser::ParseShiftExpr() {
   auto lhs = ParseAdditiveExpr();
   auto tok = ts_.Next();
-  while (tok->tag_ == Token::LEFT || tok->tag_ == Token::RIGHT) {
+  while (tok->tag_ == Token::WTOK_LEFT || tok->tag_ == Token::WTOK_RIGHT) {
     auto rhs = ParseAdditiveExpr();
     lhs = BinaryOp::New(tok, lhs, rhs);
 
@@ -630,7 +630,7 @@ Expr* Parser::ParseShiftExpr() {
 Expr* Parser::ParseRelationalExpr() {
   auto lhs = ParseShiftExpr();
   auto tok = ts_.Next();
-  while (tok->tag_ == Token::LE || tok->tag_ == Token::GE
+  while (tok->tag_ == Token::WTOK_LE || tok->tag_ == Token::WTOK_GE
       || tok->tag_ == '<' || tok->tag_ == '>') {
     auto rhs = ParseShiftExpr();
     lhs = BinaryOp::New(tok, lhs, rhs);
@@ -646,7 +646,7 @@ Expr* Parser::ParseRelationalExpr() {
 Expr* Parser::ParseEqualityExpr() {
   auto lhs = ParseRelationalExpr();
   auto tok = ts_.Next();
-  while (tok->tag_ == Token::EQ || tok->tag_ == Token::NE) {
+  while (tok->tag_ == Token::WTOK_EQ || tok->tag_ == Token::WTOK_NE) {
     auto rhs = ParseRelationalExpr();
     lhs = BinaryOp::New(tok, lhs, rhs);
 
@@ -703,7 +703,7 @@ Expr* Parser::ParseBitwiseOrExpr() {
 Expr* Parser::ParseLogicalAndExpr() {
   auto lhs = ParseBitwiseOrExpr();
   auto tok = ts_.Peek();
-  while (ts_.Try(Token::LOGICAL_AND)) {
+  while (ts_.Try(Token::WTOK_LOGICAL_AND)) {
     auto rhs = ParseBitwiseOrExpr();
     lhs = BinaryOp::New(tok, lhs, rhs);
 
@@ -717,7 +717,7 @@ Expr* Parser::ParseLogicalAndExpr() {
 Expr* Parser::ParseLogicalOrExpr() {
   auto lhs = ParseLogicalAndExpr();
   auto tok = ts_.Peek();
-  while (ts_.Try(Token::LOGICAL_OR)) {
+  while (ts_.Try(Token::WTOK_LOGICAL_OR)) {
     auto rhs = ParseLogicalAndExpr();
     lhs = BinaryOp::New(tok, lhs, rhs);
 
@@ -753,52 +753,52 @@ Expr* Parser::ParseAssignExpr() {
 
   auto tok = ts_.Next();
   switch (tok->tag_) {
-  case Token::MUL_ASSIGN:
+  case Token::WTOK_MUL_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '*', lhs, rhs);
     break;
 
-  case Token::DIV_ASSIGN:
+  case Token::WTOK_DIV_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '/', lhs, rhs);
     break;
 
-  case Token::MOD_ASSIGN:
+  case Token::WTOK_MOD_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '%', lhs, rhs);
     break;
 
-  case Token::ADD_ASSIGN:
+  case Token::WTOK_ADD_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '+', lhs, rhs);
     break;
 
-  case Token::SUB_ASSIGN:
+  case Token::WTOK_SUB_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '-', lhs, rhs);
     break;
 
-  case Token::LEFT_ASSIGN:
+  case Token::WTOK_LEFT_ASSIGN:
     rhs = ParseAssignExpr();
-    rhs = BinaryOp::New(tok, Token::LEFT, lhs, rhs);
+    rhs = BinaryOp::New(tok, Token::WTOK_LEFT, lhs, rhs);
     break;
 
-  case Token::RIGHT_ASSIGN:
+  case Token::WTOK_RIGHT_ASSIGN:
     rhs = ParseAssignExpr();
-    rhs = BinaryOp::New(tok, Token::RIGHT, lhs, rhs);
+    rhs = BinaryOp::New(tok, Token::WTOK_RIGHT, lhs, rhs);
     break;
 
-  case Token::AND_ASSIGN:
+  case Token::WTOK_AND_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '&', lhs, rhs);
     break;
 
-  case Token::XOR_ASSIGN:
+  case Token::WTOK_XOR_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '^', lhs, rhs);
     break;
 
-  case Token::OR_ASSIGN:
+  case Token::WTOK_OR_ASSIGN:
     rhs = ParseAssignExpr();
     rhs = BinaryOp::New(tok, '|', lhs, rhs);
     break;
@@ -820,7 +820,7 @@ void Parser::ParseStaticAssert() {
   ts_.Expect('(');
   auto condExpr = ParseAssignExpr();
   ts_.Expect(',');
-  auto msg = ConcatLiterals(ts_.Expect(Token::LITERAL));
+  auto msg = ConcatLiterals(ts_.Expect(Token::WTOK_LITERAL));
   ts_.Expect(')');
   ts_.Expect(';');
   if (!Evaluator<long>().Eval(condExpr)) {
@@ -833,7 +833,7 @@ void Parser::ParseStaticAssert() {
 // Return: list of declarations
 CompoundStmt* Parser::ParseDecl() {
   StmtList stmts;
-  if (ts_.Try(Token::STATIC_ASSERT)) {
+  if (ts_.Try(Token::WTOK_STATIC_ASSERT)) {
     ParseStaticAssert();
   } else {
     int storageSpec, funcSpec, align;
@@ -913,20 +913,20 @@ QualType Parser::ParseDeclSpec(int* storageSpec, int* funcSpec, int* alignSpec) 
     tok = ts_.Next();
     switch (tok->tag_) {
     // Function specifier
-    case Token::INLINE:
+    case Token::WTOK_INLINE:
       if (!funcSpec)
         Error(tok, ERR_FUNC_SPEC);
       *funcSpec |= F_INLINE;
       break;
 
-    case Token::NORETURN:
+    case Token::WTOK_NORETURN:
       if (!funcSpec)
         Error(tok, ERR_FUNC_SPEC);
       *funcSpec |= F_NORETURN;
       break;
 
     // Alignment specifier
-    case Token::ALIGNAS: {
+    case Token::WTOK_ALIGNAS: {
       if (!alignSpec)
         Error(tok, "unexpected alignment specifier");
       auto align = ParseAlignas();
@@ -936,15 +936,15 @@ QualType Parser::ParseDeclSpec(int* storageSpec, int* funcSpec, int* alignSpec) 
     }
     // Storage specifier
     // TODO(wgtdkp): typedef needs more constraints
-    case Token::TYPEDEF:
+    case Token::WTOK_TYPEDEF:
       EnsureAndSetStorageSpec(tok, storageSpec, S_TYPEDEF);
       break;
 
-    case Token::EXTERN:
+    case Token::WTOK_EXTERN:
       EnsureAndSetStorageSpec(tok, storageSpec, S_EXTERN);
       break;
 
-    case Token::STATIC:
+    case Token::WTOK_STATIC:
       if (!storageSpec)
         Error(tok, ERR_FUNC_SPEC);
       if (*storageSpec & ~S_THREAD)
@@ -952,7 +952,7 @@ QualType Parser::ParseDeclSpec(int* storageSpec, int* funcSpec, int* alignSpec) 
       *storageSpec |= S_STATIC;
       break;
 
-    case Token::THREAD:
+    case Token::WTOK_THREAD:
       if (!storageSpec)
         Error(tok, ERR_FUNC_SPEC);
       if (*storageSpec & ~COMP_THREAD)
@@ -960,102 +960,102 @@ QualType Parser::ParseDeclSpec(int* storageSpec, int* funcSpec, int* alignSpec) 
       *storageSpec |= S_THREAD;
       break;
 
-    case Token::AUTO:
+    case Token::WTOK_AUTO:
       EnsureAndSetStorageSpec(tok, storageSpec, S_AUTO);
       break;
 
-    case Token::REGISTER:
+    case Token::WTOK_REGISTER:
       EnsureAndSetStorageSpec(tok, storageSpec, S_REGISTER);
       break;
 
     // Type qualifier
-    case Token::CONST:    qualSpec |= Qualifier::CONST;    break;
-    case Token::RESTRICT: qualSpec |= Qualifier::RESTRICT; break;
-    case Token::VOLATILE: qualSpec |= Qualifier::VOLATILE; break;
+    case Token::WTOK_CONST:    qualSpec |= Qualifier::CONST;    break;
+    case Token::WTOK_RESTRICT: qualSpec |= Qualifier::RESTRICT; break;
+    case Token::WTOK_VOLATILE: qualSpec |= Qualifier::VOLATILE; break;
 
     // Type specifier
-    case Token::SIGNED:
+    case Token::WTOK_SIGNED:
       if (typeSpec & ~COMP_SIGNED)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_SIGNED;
       break;
 
-    case Token::UNSIGNED:
+    case Token::WTOK_UNSIGNED:
       if (typeSpec & ~COMP_UNSIGNED)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_UNSIGNED;
       break;
 
-    case Token::VOID:
+    case Token::WTOK_VOID:
       if (typeSpec & ~0)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_VOID;
       break;
 
-    case Token::CHAR:
+    case Token::WTOK_CHAR:
       if (typeSpec & ~COMP_CHAR)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_CHAR;
       break;
 
-    case Token::SHORT:
+    case Token::WTOK_SHORT:
       if (typeSpec & ~COMP_SHORT)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_SHORT;
       break;
 
-    case Token::INT:
+    case Token::WTOK_INT:
       if (typeSpec & ~COMP_INT)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_INT;
       break;
 
-    case Token::LONG:
+    case Token::WTOK_LONG:
       if (typeSpec & ~COMP_LONG)
         Error(tok, ERR_DECL_SPEC);
       TypeLL(typeSpec);
       break;
 
-    case Token::FLOAT:
+    case Token::WTOK_FLOAT:
       if (typeSpec & ~T_COMPLEX)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_FLOAT;
       break;
 
-    case Token::DOUBLE:
+    case Token::WTOK_DOUBLE:
       if (typeSpec & ~COMP_DOUBLE)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_DOUBLE;
       break;
 
-    case Token::BOOL:
+    case Token::WTOK_BOOL:
       if (typeSpec != 0)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_BOOL;
       break;
 
-    case Token::COMPLEX:
+    case Token::WTOK_COMPLEX:
       if (typeSpec & ~COMP_COMPLEX)
         Error(tok, ERR_DECL_SPEC);
       typeSpec |= T_COMPLEX;
       break;
 
-    case Token::STRUCT:
-    case Token::UNION:
+    case Token::WTOK_STRUCT:
+    case Token::WTOK_UNION:
       if (typeSpec & ~0)
         Error(tok, ERR_DECL_SPEC);
-      type = ParseStructUnionSpec(Token::STRUCT == tok->tag_);
+      type = ParseStructUnionSpec(Token::WTOK_STRUCT == tok->tag_);
       typeSpec |= T_STRUCT_UNION;
       break;
 
-    case Token::ENUM:
+    case Token::WTOK_ENUM:
       if (typeSpec != 0)
         Error(tok, ERR_DECL_SPEC);
       type = ParseEnumSpec();
       typeSpec |= T_ENUM;
       break;
 
-    case Token::ATOMIC:
+    case Token::WTOK_ATOMIC:
       Error(tok, "atomic not supported");
       break;
 
@@ -1132,7 +1132,7 @@ Type* Parser::ParseEnumSpec() {
 
   std::string tagName;
   auto tok = ts_.Peek();
-  if (ts_.Try(Token::IDENTIFIER)) {
+  if (ts_.Try(Token::WTOK_IDENTIFIER)) {
     tagName = tok->str_;
     if (ts_.Try('{')) {
       auto tagIdent = curScope_->FindTagInCurScope(tok);
@@ -1168,7 +1168,7 @@ Type* Parser::ParseEnumerator(ArithmType* type) {
   assert(type && type->IsInteger());
   int val = 0;
   do {
-    auto tok = ts_.Expect(Token::IDENTIFIER);
+    auto tok = ts_.Expect(Token::WTOK_IDENTIFIER);
     // GNU extension: enumerator attributes
     TryAttributeSpecList();
 
@@ -1198,7 +1198,7 @@ Type* Parser::ParseStructUnionSpec(bool isStruct) {
 
   std::string tagName;
   auto tok = ts_.Peek();
-  if (ts_.Try(Token::IDENTIFIER)) {
+  if (ts_.Try(Token::WTOK_IDENTIFIER)) {
     tagName = tok->str_;
     if (ts_.Try('{')) {
       auto tagIdent = curScope_->FindTagInCurScope(tok);
@@ -1251,7 +1251,7 @@ StructType* Parser::ParseStructUnionDecl(StructType* type) {
       Error(ts_.Peek(), "premature end of input");
     }
 
-    if(ts_.Try(Token::STATIC_ASSERT)) {
+    if(ts_.Try(Token::WTOK_STATIC_ASSERT)) {
       ParseStaticAssert();
       continue;
     }
@@ -1389,10 +1389,10 @@ int Parser::ParseQual() {
   for (; ;) {
     auto tok = ts_.Next();
     switch (tok->tag_) {
-    case Token::CONST:    qualSpec |= Qualifier::CONST;    break;
-    case Token::RESTRICT: qualSpec |= Qualifier::RESTRICT; break;
-    case Token::VOLATILE: qualSpec |= Qualifier::VOLATILE; break;
-    case Token::ATOMIC:   Error(tok, "do not support 'atomic'"); break;
+    case Token::WTOK_CONST:    qualSpec |= Qualifier::CONST;    break;
+    case Token::WTOK_RESTRICT: qualSpec |= Qualifier::RESTRICT; break;
+    case Token::WTOK_VOLATILE: qualSpec |= Qualifier::VOLATILE; break;
+    case Token::WTOK_ATOMIC:   Error(tok, "do not support 'atomic'"); break;
     default: ts_.PutBack(); return qualSpec;
     }
   }
@@ -1631,10 +1631,10 @@ QualType Parser::ParseArrayFuncDeclarator(const Token* ident, QualType base) {
  * Return: -1, length not specified
  */
 int Parser::ParseArrayLength() {
-  auto hasStatic = ts_.Try(Token::STATIC);
+  auto hasStatic = ts_.Try(Token::WTOK_STATIC);
   auto qual = ParseQual();
   if (0 != qual)
-    hasStatic = ts_.Try(Token::STATIC);
+    hasStatic = ts_.Try(Token::WTOK_STATIC);
 
   if (!hasStatic && ts_.Test(']'))
     return -1;
@@ -1661,7 +1661,7 @@ bool Parser::ParseParamList(FuncType::ParamList& params) {
   params.push_back(param);
 
   while (ts_.Try(',')) {
-    if (ts_.Try(Token::ELLIPSIS))
+    if (ts_.Try(Token::WTOK_ELLIPSIS))
       return true;
     param = ParseParamDecl();
     if (param->Type()->ToVoid())
@@ -1808,7 +1808,7 @@ void Parser::ParseInitializer(Declaration* decl,
   //if (literalType && !literalType->Compatible(*type))
   //    Error("incompatible type of initializer");
   if (arrType) {
-    if (forceBrace && !ts_.Test('{') && !ts_.Test(Token::LITERAL)) {
+    if (forceBrace && !ts_.Test('{') && !ts_.Test(Token::WTOK_LITERAL)) {
       ts_.Expect('{');
     } else if (!ParseLiteralInitializer(decl, arrType, offset)) {
       ParseArrayInitializer(decl, arrType, offset, designated);
@@ -1848,7 +1848,7 @@ bool Parser::ParseLiteralInitializer(Declaration* decl,
     return false;
 
   auto hasBrace = ts_.Try('{');
-  if (!ts_.Test(Token::LITERAL)) {
+  if (!ts_.Test(Token::WTOK_LITERAL)) {
     if (hasBrace) ts_.PutBack();
     return false;
   }
@@ -2008,7 +2008,7 @@ void Parser::ParseStructInitializer(Declaration* decl,
     }
 
     if ((designated = ts_.Try('.'))) {
-      auto tok = ts_.Expect(Token::IDENTIFIER);
+      auto tok = ts_.Expect(Token::WTOK_IDENTIFIER);
       const auto& name = tok->str_;
       if (!type->GetMember(name)) {
         Error(tok, "member '%s' not found", name.c_str());
@@ -2070,33 +2070,33 @@ Stmt* Parser::ParseStmt() {
 
   switch (tok->tag_) {
   // GNU extension: statement attributes
-  case Token::ATTRIBUTE:
+  case Token::WTOK_ATTRIBUTE:
     TryAttributeSpecList();
   case ';':
     return EmptyStmt::New();
   case '{':
     return ParseCompoundStmt();
-  case Token::IF:
+  case Token::WTOK_IF:
     return ParseIfStmt();
-  case Token::SWITCH:
+  case Token::WTOK_SWITCH:
     return ParseSwitchStmt();
-  case Token::WHILE:
+  case Token::WTOK_WHILE:
     return ParseWhileStmt();
-  case Token::DO:
+  case Token::WTOK_DO:
     return ParseDoStmt();
-  case Token::FOR:
+  case Token::WTOK_FOR:
     return ParseForStmt();
-  case Token::GOTO:
+  case Token::WTOK_GOTO:
     return ParseGotoStmt();
-  case Token::CONTINUE:
+  case Token::WTOK_CONTINUE:
     return ParseContinueStmt();
-  case Token::BREAK:
+  case Token::WTOK_BREAK:
     return ParseBreakStmt();
-  case Token::RETURN:
+  case Token::WTOK_RETURN:
     return ParseReturnStmt();
-  case Token::CASE:
+  case Token::WTOK_CASE:
     return ParseCaseStmt();
-  case Token::DEFAULT:
+  case Token::WTOK_DEFAULT:
     return ParseDefaultStmt();
   }
 
@@ -2149,7 +2149,7 @@ IfStmt* Parser::ParseIfStmt() {
 
   auto then = ParseStmt();
   Stmt* els = nullptr;
-  if (ts_.Try(Token::ELSE))
+  if (ts_.Try(Token::WTOK_ELSE))
     els = ParseStmt();
 
   return IfStmt::New(cond, then, els);
@@ -2265,7 +2265,7 @@ CompoundStmt* Parser::ParseDoStmt() {
   bodyStmt = ParseStmt();
   EXIT_LOOP_BODY()
 
-  ts_.Expect(Token::WHILE);
+  ts_.Expect(Token::WTOK_WHILE);
   ts_.Expect('(');
   auto condExpr = ParseExpr();
   ts_.Expect(')');
@@ -2341,7 +2341,7 @@ CompoundStmt* Parser::ParseSwitchStmt() {
 
   for (auto iter = caseLabels.begin();
        iter != caseLabels.end(); ++iter) {
-    auto cond = BinaryOp::New(tok, Token::EQ, t, iter->first);
+    auto cond = BinaryOp::New(tok, Token::WTOK_EQ, t, iter->first);
     auto then = JumpStmt::New(iter->second);
     auto ifStmt = IfStmt::New(cond, then, nullptr);
     stmts.push_back(ifStmt);
@@ -2366,7 +2366,7 @@ CompoundStmt* Parser::ParseCaseStmt() {
   // Case ranges: Non-standard GNU extension
   long begin, end;
   begin = Evaluator<long>().Eval(ParseAssignExpr());
-  if (ts_.Try(Token::ELLIPSIS))
+  if (ts_.Try(Token::WTOK_ELLIPSIS))
     end = Evaluator<long>().Eval(ParseAssignExpr());
   else
     end = begin;
@@ -2446,7 +2446,7 @@ ReturnStmt* Parser::ParseReturnStmt() {
 
 JumpStmt* Parser::ParseGotoStmt() {
   auto label = ts_.Peek();
-  ts_.Expect(Token::IDENTIFIER);
+  ts_.Expect(Token::WTOK_IDENTIFIER);
   ts_.Expect(';');
 
   auto labelStmt = FindLabel(label->str_);
@@ -2528,7 +2528,7 @@ Identifier* Parser::GetBuiltin(const Token* tok) {
 
 // Attribute
 void Parser::TryAttributeSpecList() {
-  while (ts_.Try(Token::ATTRIBUTE))
+  while (ts_.Try(Token::WTOK_ATTRIBUTE))
     ParseAttributeSpec();
 }
 
@@ -2549,13 +2549,13 @@ void Parser::ParseAttributeSpec() {
 
 
 void Parser::ParseAttribute() {
-  if (!ts_.Test(Token::IDENTIFIER))
+  if (!ts_.Test(Token::WTOK_IDENTIFIER))
     return;
   if (ts_.Try('(')) {
     if (ts_.Try(')'))
       return;
 
-    ts_.Expect(Token::IDENTIFIER);
+    ts_.Expect(Token::WTOK_IDENTIFIER);
     if (ts_.Test(',')) {
       while (ts_.Try(',')) {}
     }

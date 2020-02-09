@@ -41,160 +41,160 @@ namespace pp
     public:
         enum {
             // Punctuators
-            LPAR = '(',
-            RPAR = ')',
-            LSQB = '[',
-            RSQB = ']',
-            COLON = ':',
-            COMMA = ',',
-            SEMI = ';',
-            ADD = '+',
-            SUB = '-',
-            MUL = '*',
-            DIV = '/',
-            OR = '|',
-            AND = '&',
-            XOR = '^',
-            LESS = '<',
-            GREATER = '>',
-            EQUAL = '=',
-            DOT = '.',
-            MOD = '%',
-            LBRACE = '{',
-            RBRACE = '}',
-            TILDE = '~',
-            NOT = '!',
-            COND = '?',
-            SHARP = '#',
-            NEW_LINE = '\n',
+            WTOK_LPAR = '(',
+            WTOK_RPAR = ')',
+            WTOK_LSQB = '[',
+            WTOK_RSQB = ']',
+            WTOK_COLON = ':',
+            WTOK_COMMA = ',',
+            WTOK_SEMI = ';',
+            WTOK_ADD = '+',
+            WTOK_SUB = '-',
+            WTOK_MUL = '*',
+            WTOK_DIV = '/',
+            WTOK_OR = '|',
+            WTOK_AND = '&',
+            WTOK_XOR = '^',
+            WTOK_LESS = '<',
+            WTOK_GREATER = '>',
+            WTOK_EQUAL = '=',
+            WTOK_DOT = '.',
+            WTOK_MOD = '%',
+            WTOK_LBRACE = '{',
+            WTOK_RBRACE = '}',
+            WTOK_TILDE = '~',
+            WTOK_NOT = '!',
+            WTOK_COND = '?',
+            WTOK_SHARP = '#',
+            WTOK_NEW_LINE = '\n',
 
-            DSHARP = 128, // '##'
-            PTR,
-            INC,
-            DEC,
-            LEFT,
-            RIGHT,
-            LE,
-            GE,
-            EQ,
-            NE,
-            LOGICAL_AND,
-            LOGICAL_OR,
+            WTOK_DSHARP = 128, // '##'
+            WTOK_PTR,
+            WTOK_INC,
+            WTOK_DEC,
+            WTOK_LEFT,
+            WTOK_RIGHT,
+            WTOK_LE,
+            WTOK_GE,
+            WTOK_EQ,
+            WTOK_NE,
+            WTOK_LOGICAL_AND,
+            WTOK_LOGICAL_OR,
 
-            MUL_ASSIGN,
-            DIV_ASSIGN,
-            MOD_ASSIGN,
-            ADD_ASSIGN,
-            SUB_ASSIGN,
-            LEFT_ASSIGN,
-            RIGHT_ASSIGN,
-            AND_ASSIGN,
-            XOR_ASSIGN,
-            OR_ASSIGN,
+            WTOK_MUL_ASSIGN,
+            WTOK_DIV_ASSIGN,
+            WTOK_MOD_ASSIGN,
+            WTOK_ADD_ASSIGN,
+            WTOK_SUB_ASSIGN,
+            WTOK_LEFT_ASSIGN,
+            WTOK_RIGHT_ASSIGN,
+            WTOK_AND_ASSIGN,
+            WTOK_XOR_ASSIGN,
+            WTOK_OR_ASSIGN,
 
-            ELLIPSIS,
+            WTOK_ELLIPSIS,
             // Punctuators end
 
             // KEYWORD BEGIN
             // TYPE QUALIFIER BEGIN
-            CONST,
-            RESTRICT,
-            VOLATILE,
-            ATOMIC,
+            WTOK_CONST,
+            WTOK_RESTRICT,
+            WTOK_VOLATILE,
+            WTOK_ATOMIC,
             // TYPE QUALIFIER END
 
             // TYPE SPECIFIER BEGIN
-            VOID,
-            CHAR,
-            SHORT,
-            INT,
-            LONG,
-            FLOAT,
-            DOUBLE,
-            SIGNED,
-            UNSIGNED,
-            BOOL,		// _Bool
-            COMPLEX,	// _Complex
-            STRUCT,
-            UNION,
-            ENUM,
+            WTOK_VOID,
+            WTOK_CHAR,
+            WTOK_SHORT,
+            WTOK_INT,
+            WTOK_LONG,
+            WTOK_FLOAT,
+            WTOK_DOUBLE,
+            WTOK_SIGNED,
+            WTOK_UNSIGNED,
+            WTOK_BOOL,		// _Bool
+            WTOK_COMPLEX,	// _Complex
+            WTOK_STRUCT,
+            WTOK_UNION,
+            WTOK_ENUM,
             // TYPE SPECIFIER END
 
-            ATTRIBUTE, // GNU extension __attribute__
+            WTOK_ATTRIBUTE, // GNU extension __attribute__
             // FUNCTION SPECIFIER BEGIN
-            INLINE,
-            NORETURN,	// _Noreturn
+            WTOK_INLINE,
+            WTOK_NORETURN,	// _Noreturn
             // FUNCTION SPECIFIER END
 
-            ALIGNAS, // _Alignas
+            WTOK_ALIGNAS, // _Alignas
             // For syntactic convenience
-            STATIC_ASSERT, // _Static_assert
+            WTOK_STATIC_ASSERT, // _Static_assert
             // STORAGE CLASS SPECIFIER BEGIN
-            TYPEDEF,
-            EXTERN,
-            STATIC,
-            THREAD,	// _Thread_local
-            AUTO,
-            REGISTER,
+            WTOK_TYPEDEF,
+            WTOK_EXTERN,
+            WTOK_STATIC,
+            WTOK_THREAD,	// _Thread_local
+            WTOK_AUTO,
+            WTOK_REGISTER,
             // STORAGE CLASS SPECIFIER END
-            BREAK,
-            CASE,
-            CONTINUE,
-            DEFAULT,
-            DO,
-            ELSE,
-            FOR,
-            GOTO,
-            IF,
-            RETURN,
-            SIZEOF,
-            SWITCH,
-            WHILE,
-            ALIGNOF, // _Alignof
-            GENERIC, // _Generic
-            IMAGINARY, // _Imaginary
+            WTOK_BREAK,
+            WTOK_CASE,
+            WTOK_CONTINUE,
+            WTOK_DEFAULT,
+            WTOK_DO,
+            WTOK_ELSE,
+            WTOK_FOR,
+            WTOK_GOTO,
+            WTOK_IF,
+            WTOK_RETURN,
+            WTOK_SIZEOF,
+            WTOK_SWITCH,
+            WTOK_WHILE,
+            WTOK_ALIGNOF, // _Alignof
+            WTOK_GENERIC, // _Generic
+            WTOK_IMAGINARY, // _Imaginary
             // KEYWORD END
 
-            IDENTIFIER,
-            CONSTANT,
-            I_CONSTANT,
-            C_CONSTANT,
-            F_CONSTANT,
-            LITERAL,
+            WTOK_IDENTIFIER,
+            WTOK_CONSTANT,
+            WTOK_I_CONSTANT,
+            WTOK_C_CONSTANT,
+            WTOK_F_CONSTANT,
+            WTOK_LITERAL,
 
             // For the parser, a identifier is a typedef name or user defined type
-            POSTFIX_INC,
-            POSTFIX_DEC,
-            PREFIX_INC,
-            PREFIX_DEC,
-            ADDR,  // '&'
-            DEREF, // '*'
-            PLUS,
-            MINUS,
-            CAST,
+            WTOK_POSTFIX_INC,
+            WTOK_POSTFIX_DEC,
+            WTOK_PREFIX_INC,
+            WTOK_PREFIX_DEC,
+            WTOK_ADDR,  // '&'
+            WTOK_DEREF, // '*'
+            WTOK_PLUS,
+            WTOK_MINUS,
+            WTOK_CAST,
 
             // For preprocessor
-            PP_IF,
-            PP_IFDEF,
-            PP_IFNDEF,
-            PP_ELIF,
-            PP_ELSE,
-            PP_ENDIF,
-            PP_INCLUDE,
-            PP_DEFINE,
-            PP_UNDEF,
-            PP_LINE,
-            PP_ERROR,
-            PP_PRAGMA,
-            PP_VERSION,
-            PP_NONE,
-            PP_EMPTY,
+            WTOK_PP_IF,
+            WTOK_PP_IFDEF,
+            WTOK_PP_IFNDEF,
+            WTOK_PP_ELIF,
+            WTOK_PP_ELSE,
+            WTOK_PP_ENDIF,
+            WTOK_PP_INCLUDE,
+            WTOK_PP_DEFINE,
+            WTOK_PP_UNDEF,
+            WTOK_PP_LINE,
+            WTOK_PP_ERROR,
+            WTOK_PP_PRAGMA,
+            WTOK_PP_VERSION,
+            WTOK_PP_NONE,
+            WTOK_PP_EMPTY,
 
 
-            IGNORE,
-            INVALID,
-            END,
-            NOTOK = -1,
+            WTOK_IGNORE,
+            WTOK_INVALID,
+            WTOK_END,
+            WTOK_NOTOK = -1,
         };
 
         static Token* New(int tag);
@@ -213,23 +213,23 @@ namespace pp
         }
         virtual ~Token() {}
 
-        // Token::NOTOK represents not a kw.
+        // Token::WTOK_NOTOK represents not a kw.
         static int KeyWordTag(const std::string& key) {
             auto kwIter = kwTypeMap_.find(key);
             if (kwTypeMap_.end() == kwIter)
-                return Token::NOTOK;	// Not a key word type
+                return Token::WTOK_NOTOK;	// Not a key word type
             return kwIter->second;
         }
         static bool IsKeyWord(const std::string& name);
-        static bool IsKeyWord(int tag) { return CONST <= tag && tag < IDENTIFIER; }
+        static bool IsKeyWord(int tag) { return WTOK_CONST <= tag && tag < WTOK_IDENTIFIER; }
         bool IsKeyWord() const { return IsKeyWord(tag_); }
-        bool IsPunctuator() const { return 0 <= tag_ && tag_ <= ELLIPSIS; }
-        bool IsLiteral() const { return tag_ == LITERAL; }
-        bool IsConstant() const { return CONSTANT <= tag_ && tag_ <= F_CONSTANT; }
-        bool IsIdentifier() const { return IDENTIFIER == tag_; }
-        bool IsEOF() const { return tag_ == Token::END; }
-        bool IsTypeSpecQual() const { return CONST <= tag_ && tag_ <= ENUM; }
-        bool IsDecl() const { return CONST <= tag_ && tag_ <= REGISTER; }
+        bool IsPunctuator() const { return 0 <= tag_ && tag_ <= WTOK_ELLIPSIS; }
+        bool IsLiteral() const { return tag_ == WTOK_LITERAL; }
+        bool IsConstant() const { return WTOK_CONSTANT <= tag_ && tag_ <= WTOK_F_CONSTANT; }
+        bool IsIdentifier() const { return WTOK_IDENTIFIER == tag_; }
+        bool IsEOF() const { return tag_ == Token::WTOK_END; }
+        bool IsTypeSpecQual() const { return WTOK_CONST <= tag_ && tag_ <= WTOK_ENUM; }
+        bool IsDecl() const { return WTOK_CONST <= tag_ && tag_ <= WTOK_REGISTER; }
         static const char* Lexeme(int tag) {
             auto iter = tagLexemeMap_.find(tag);
             if (iter == tagLexemeMap_.end())
@@ -341,14 +341,14 @@ namespace pp
             }
             else {
                 --begin_;
-                if ((*begin_)->tag_ == Token::NEW_LINE)
+                if ((*begin_)->tag_ == Token::WTOK_NEW_LINE)
                     PutBack();
             }
         }
         const Token* Peek() const;
         const Token* Peek2() {
             if (Empty())
-                return Peek(); // Return the Token::END
+                return Peek(); // Return the Token::WTOK_END
             Next();
             auto ret = Peek();
             PutBack();
@@ -369,7 +369,7 @@ namespace pp
         }
         TokenList::iterator Mark() { return begin_; }
         void ResetTo(TokenList::iterator mark) { begin_ = mark; }
-        bool Empty() const { return Peek()->tag_ == Token::END; }
+        bool Empty() const { return Peek()->tag_ == Token::WTOK_END; }
         void InsertBack(TokenSequence& ts) {
             auto pos = tokList_->insert(end_, ts.begin_, ts.end_);
             if (begin_ == end_) {
@@ -405,7 +405,7 @@ namespace pp
             if (pos == tokList_->begin())
                 return pos;
             --pos;
-            while (pos != tokList_->begin() && (*pos)->tag_ == Token::NEW_LINE)
+            while (pos != tokList_->begin() && (*pos)->tag_ == Token::WTOK_NEW_LINE)
                 --pos;
             return ++pos;
         }

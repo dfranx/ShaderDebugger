@@ -135,6 +135,8 @@ namespace sd
 		inline bool IsDiscarded() { return m_discarded; }
 		inline std::string GetLastError() { return m_error; }
 
+		inline bv_program* GetProgram() { return m_prog; }
+
 	private:
 		bool m_checkBreakpoint(int line);
 		Function m_getFunctionInfo(const std::string& fname);

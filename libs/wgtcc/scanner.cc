@@ -9,17 +9,17 @@ namespace pp
     void Scanner::Tokenize(TokenSequence& ts) {
         while (true) {
             auto tok = Scan();
-            if (tok->tag_ == Token::END) {
-                if (ts.Empty() || (ts.Back()->tag_ != Token::NEW_LINE)) {
+            if (tok->tag_ == Token::WTOK_END) {
+                if (ts.Empty() || (ts.Back()->tag_ != Token::WTOK_NEW_LINE)) {
                     auto t = Token::New(*tok);
-                    t->tag_ = Token::NEW_LINE;
+                    t->tag_ = Token::WTOK_NEW_LINE;
                     t->str_ = "\n";
                     ts.InsertBack(t);
                 }
                 break;
             }
             else {
-                if (!ts.Empty() && ts.Back()->tag_ == Token::NEW_LINE)
+                if (!ts.Empty() && ts.Back()->tag_ == Token::WTOK_NEW_LINE)
                     tok->ws_ = true;
                 ts.InsertBack(tok);
             }
@@ -65,64 +65,64 @@ namespace pp
             return SkipNumber();
 
         switch (c) {
-        case '#': return MakeToken(Try('#') ? Token::DSHARP : c);
+        case '#': return MakeToken(Try('#') ? Token::WTOK_DSHARP : c);
         case ':': return MakeToken(Try('>') ? ']' : c);
         case '(': case ')': case '[': case ']':
         case '?': case ',': case '{': case '}':
         case '~': case ';':
             return MakeToken(c);
         case '-':
-            if (Try('>')) return MakeToken(Token::PTR);
-            if (Try('-')) return MakeToken(Token::DEC);
-            if (Try('=')) return MakeToken(Token::SUB_ASSIGN);
+            if (Try('>')) return MakeToken(Token::WTOK_PTR);
+            if (Try('-')) return MakeToken(Token::WTOK_DEC);
+            if (Try('=')) return MakeToken(Token::WTOK_SUB_ASSIGN);
             return MakeToken(c);
         case '+':
-            if (Try('+')) return MakeToken(Token::INC);
-            if (Try('=')) return MakeToken(Token::ADD_ASSIGN);
+            if (Try('+')) return MakeToken(Token::WTOK_INC);
+            if (Try('=')) return MakeToken(Token::WTOK_ADD_ASSIGN);
             return MakeToken(c);
         case '<':
-            if (Try('<')) return MakeToken(Try('=') ? Token::LEFT_ASSIGN : Token::LEFT);
-            if (Try('=')) return MakeToken(Token::LE);
+            if (Try('<')) return MakeToken(Try('=') ? Token::WTOK_LEFT_ASSIGN : Token::WTOK_LEFT);
+            if (Try('=')) return MakeToken(Token::WTOK_LE);
             if (Try(':')) return MakeToken('[');
             if (Try('%')) return MakeToken('{');
             return MakeToken(c);
         case '%':
-            if (Try('=')) return MakeToken(Token::MOD_ASSIGN);
+            if (Try('=')) return MakeToken(Token::WTOK_MOD_ASSIGN);
             if (Try('>')) return MakeToken('}');
             if (Try(':')) {
                 if (Try('%')) {
-                    if (Try(':')) return MakeToken(Token::DSHARP);
+                    if (Try(':')) return MakeToken(Token::WTOK_DSHARP);
                     PutBack();
                 }
                 return MakeToken('#');
             }
             return MakeToken(c);
         case '>':
-            if (Try('>')) return MakeToken(Try('=') ? Token::RIGHT_ASSIGN : Token::RIGHT);
-            if (Try('=')) return MakeToken(Token::GE);
+            if (Try('>')) return MakeToken(Try('=') ? Token::WTOK_RIGHT_ASSIGN : Token::WTOK_RIGHT);
+            if (Try('=')) return MakeToken(Token::WTOK_GE);
             return MakeToken(c);
-        case '=': return MakeToken(Try('=') ? Token::EQ : c);
-        case '!': return MakeToken(Try('=') ? Token::NE : c);
+        case '=': return MakeToken(Try('=') ? Token::WTOK_EQ : c);
+        case '!': return MakeToken(Try('=') ? Token::WTOK_NE : c);
         case '&':
-            if (Try('&')) return MakeToken(Token::LOGICAL_AND);
-            if (Try('=')) return MakeToken(Token::AND_ASSIGN);
+            if (Try('&')) return MakeToken(Token::WTOK_LOGICAL_AND);
+            if (Try('=')) return MakeToken(Token::WTOK_AND_ASSIGN);
             return MakeToken(c);
         case '|':
-            if (Try('|')) return MakeToken(Token::LOGICAL_OR);
-            if (Try('=')) return MakeToken(Token::OR_ASSIGN);
+            if (Try('|')) return MakeToken(Token::WTOK_LOGICAL_OR);
+            if (Try('=')) return MakeToken(Token::WTOK_OR_ASSIGN);
             return MakeToken(c);
-        case '*': return MakeToken(Try('=') ? Token::MUL_ASSIGN : c);
+        case '*': return MakeToken(Try('=') ? Token::WTOK_MUL_ASSIGN : c);
         case '/':
             if (Test('/') || Test('*')) {
                 SkipComment();
                 return Scan(true);
             }
-            return MakeToken(Try('=') ? Token::DIV_ASSIGN : c);
-        case '^': return MakeToken(Try('=') ? Token::XOR_ASSIGN : c);
+            return MakeToken(Try('=') ? Token::WTOK_DIV_ASSIGN : c);
+        case '^': return MakeToken(Try('=') ? Token::WTOK_XOR_ASSIGN : c);
         case '.':
             if (isdigit(Peek())) return SkipNumber();
             if (Try('.')) {
-                if (Try('.')) return MakeToken(Token::ELLIPSIS);
+                if (Try('.')) return MakeToken(Token::WTOK_ELLIPSIS);
                 PutBack();
                 return MakeToken('.');
             }
@@ -139,9 +139,9 @@ namespace pp
             // Universal character name is allowed in identifier
             if (Test('u') || Test('U'))
                 return SkipIdentifier();
-            return MakeToken(Token::INVALID);
-        case '\0': return MakeToken(Token::END);
-        default: return MakeToken(Token::INVALID);
+            return MakeToken(Token::WTOK_INVALID);
+        case '\0': return MakeToken(Token::WTOK_END);
+        default: return MakeToken(Token::WTOK_INVALID);
         }
     }
 
@@ -207,7 +207,7 @@ namespace pp
             c = Next();
         }
         PutBack();
-        return MakeToken(Token::IDENTIFIER);
+        return MakeToken(Token::WTOK_IDENTIFIER);
     }
 
 
@@ -215,19 +215,19 @@ namespace pp
     Token* Scanner::SkipNumber() {
         PutBack();
         bool sawHexPrefix = false;
-        int tag = Token::I_CONSTANT;
+        int tag = Token::WTOK_I_CONSTANT;
         auto c = Next();
         while (c == '.' || isdigit(c) || isalpha(c) || c == '_' || IsUCN(c)) {
             if (c == 'e' || c == 'E' || c == 'p' || c == 'P') {
                 if (!Try('-')) Try('+');
                 if (!((c == 'e' || c == 'E') && sawHexPrefix))
-                    tag = Token::F_CONSTANT;
+                    tag = Token::WTOK_F_CONSTANT;
             }
             else if (IsUCN(c)) {
                 ScanEscaped();
             }
             else if (c == '.') {
-                tag = Token::F_CONSTANT;
+                tag = Token::WTOK_F_CONSTANT;
             }
             else if (c == 'x' || c == 'X') {
                 sawHexPrefix = true;
@@ -265,7 +265,7 @@ namespace pp
         }
         if (c != '\"')
             Error(loc_, "unterminated string literal");
-        return MakeToken(Token::LITERAL);
+        return MakeToken(Token::WTOK_LITERAL);
     }
 
 
@@ -301,7 +301,7 @@ namespace pp
         }
         if (c != '\'')
             Error(loc_, "unterminated character constant");
-        return MakeToken(Token::C_CONSTANT);
+        return MakeToken(Token::WTOK_C_CONSTANT);
     }
 
 

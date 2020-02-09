@@ -12,21 +12,21 @@ namespace pp
     using DirectiveMap = std::unordered_map<std::string, int>;
 
     static const DirectiveMap directiveMap{
-      {"if", Token::PP_IF},
-      {"ifdef", Token::PP_IFDEF},
-      {"ifndef", Token::PP_IFNDEF},
-      {"elif", Token::PP_ELIF},
-      {"else", Token::PP_ELSE},
-      {"endif", Token::PP_ENDIF},
-      {"include", Token::PP_INCLUDE},
+      {"if", Token::WTOK_PP_IF},
+      {"ifdef", Token::WTOK_PP_IFDEF},
+      {"ifndef", Token::WTOK_PP_IFNDEF},
+      {"elif", Token::WTOK_PP_ELIF},
+      {"else", Token::WTOK_PP_ELSE},
+      {"endif", Token::WTOK_PP_ENDIF},
+      {"include", Token::WTOK_PP_INCLUDE},
       // Non-standard GNU extension
-      {"include_next", Token::PP_INCLUDE},
-      {"define", Token::PP_DEFINE},
-      {"undef", Token::PP_UNDEF},
-      {"line", Token::PP_LINE},
-      {"error", Token::PP_ERROR},
-      {"pragma", Token::PP_PRAGMA},
-      {"version", Token::PP_VERSION}
+      {"include_next", Token::WTOK_PP_INCLUDE},
+      {"define", Token::WTOK_PP_DEFINE},
+      {"undef", Token::WTOK_PP_UNDEF},
+      {"line", Token::WTOK_PP_LINE},
+      {"error", Token::WTOK_PP_ERROR},
+      {"pragma", Token::WTOK_PP_PRAGMA},
+      {"version", Token::WTOK_PP_VERSION}
     };
 
 
@@ -43,7 +43,7 @@ namespace pp
             auto tok = is.Peek();
             const auto& name = tok->str_;
 
-            if ((direcitve = GetDirective(is)) != Token::INVALID) {
+            if ((direcitve = GetDirective(is)) != Token::WTOK_INVALID) {
                 ParseDirective(os, is, direcitve);
             }
             else if (!inCond && !NeedExpand()) {
@@ -131,18 +131,18 @@ namespace pp
                 auto tok = Stringize(ap);
                 os.InsertBack(tok);
             }
-            else if (is.Test(Token::DSHARP) &&
+            else if (is.Test(Token::WTOK_DSHARP) &&
                 FindActualParam(ap, params, is.Peek2()->str_)) {
                 is.Next(); is.Next();
                 if (!ap.Empty())
                     Glue(os, ap);
             }
-            else if (is.Test(Token::DSHARP)) {
+            else if (is.Test(Token::WTOK_DSHARP)) {
                 is.Next();
                 auto tok = is.Next();
                 Glue(os, tok);
             }
-            else if (is.Peek2()->tag_ == Token::DSHARP &&
+            else if (is.Peek2()->tag_ == Token::WTOK_DSHARP &&
                 FindActualParam(ap, params, is.Peek()->str_)) {
                 is.Next();
 
@@ -221,7 +221,7 @@ namespace pp
             // Have preceding white space
             // and is not the first token of the sequence
             str.append(tok->ws_ && str.size() > 1, ' ');
-            if (tok->tag_ == Token::LITERAL || tok->tag_ == Token::C_CONSTANT) {
+            if (tok->tag_ == Token::WTOK_LITERAL || tok->tag_ == Token::WTOK_C_CONSTANT) {
                 for (auto c : tok->str_) {
                     if (c == '"' || c == '\\')
                         str.push_back('\\');
@@ -235,7 +235,7 @@ namespace pp
         str.push_back('\"');
 
         auto ret = Token::New(*is.Peek());
-        ret->tag_ = Token::LITERAL;
+        ret->tag_ = Token::WTOK_LITERAL;
         ret->str_ = str;
         return ret;
     }
@@ -244,10 +244,10 @@ namespace pp
     void Preprocessor::Finalize(TokenSequence os) {
         while (!os.Empty()) {
             auto tok = os.Next();
-            if (tok->tag_ == Token::INVALID) {
+            if (tok->tag_ == Token::WTOK_INVALID) {
                 Error(tok, "stray token in program");
             }
-            else if (tok->tag_ == Token::IDENTIFIER) {
+            else if (tok->tag_ == Token::WTOK_IDENTIFIER) {
                 auto tag = Token::KeyWordTag(tok->str_);
                 if (Token::IsKeyWord(tag)) {
                     const_cast<Token*>(tok)->tag_ = tag;
@@ -325,10 +325,10 @@ namespace pp
 
     const Token* Preprocessor::EvalDefOp(TokenSequence& is) {
         auto hasPar = is.Try('(');
-        auto macro = is.Expect(Token::IDENTIFIER);
+        auto macro = is.Expect(Token::WTOK_IDENTIFIER);
         auto cons = Token::New(*macro);
         if (hasPar) is.Expect(')');
-        cons->tag_ = Token::I_CONSTANT;
+        cons->tag_ = Token::WTOK_I_CONSTANT;
         cons->str_ = FindMacro(macro->str_) ? "1" : "0";
         return cons;
     }
@@ -338,9 +338,9 @@ namespace pp
         TokenSequence os;
         while (!is.Empty()) {
             auto tok = is.Next();
-            if (tok->tag_ == Token::IDENTIFIER) {
+            if (tok->tag_ == Token::WTOK_IDENTIFIER) {
                 auto cons = Token::New(*tok);
-                cons->tag_ = Token::I_CONSTANT;
+                cons->tag_ = Token::WTOK_I_CONSTANT;
                 cons->str_ = "0";
                 os.InsertBack(cons);
             }
@@ -354,72 +354,72 @@ namespace pp
 
     int Preprocessor::GetDirective(TokenSequence& is) {
         if (!is.Test('#') || !is.IsBeginOfLine())
-            return Token::INVALID;
+            return Token::WTOK_INVALID;
 
         is.Next();
         if (is.IsBeginOfLine())
-            return Token::PP_EMPTY;
+            return Token::WTOK_PP_EMPTY;
 
         auto tag = is.Peek()->tag_;
-        if (tag == Token::IDENTIFIER || Token::IsKeyWord(tag)) {
+        if (tag == Token::WTOK_IDENTIFIER || Token::IsKeyWord(tag)) {
             auto str = is.Peek()->str_;
             auto res = directiveMap.find(str);
             if (res == directiveMap.end())
-                return Token::PP_NONE;
+                return Token::WTOK_PP_NONE;
             return res->second;
         }
-        return Token::PP_NONE;
+        return Token::WTOK_PP_NONE;
     }
 
 
     void Preprocessor::ParseDirective(TokenSequence& os,
         TokenSequence& is,
         int directive) {
-        if (directive == Token::PP_EMPTY)
+        if (directive == Token::WTOK_PP_EMPTY)
             return;
         auto ls = is.GetLine();
         switch (directive) {
-        case Token::PP_IF:
+        case Token::WTOK_PP_IF:
             ParseIf(ls); break;
-        case Token::PP_IFDEF:
+        case Token::WTOK_PP_IFDEF:
             ParseIfdef(ls); break;
-        case Token::PP_IFNDEF:
+        case Token::WTOK_PP_IFNDEF:
             ParseIfndef(ls); break;
-        case Token::PP_ELIF:
+        case Token::WTOK_PP_ELIF:
             ParseElif(ls); break;
-        case Token::PP_ELSE:
+        case Token::WTOK_PP_ELSE:
             ParseElse(ls); break;
-        case Token::PP_ENDIF:
+        case Token::WTOK_PP_ENDIF:
             ParseEndif(ls); break;
-        case Token::PP_INCLUDE:
+        case Token::WTOK_PP_INCLUDE:
             if (NeedExpand())
                 ParseInclude(is, ls);
             break;
-        case Token::PP_DEFINE:
+        case Token::WTOK_PP_DEFINE:
             if (NeedExpand())
                 ParseDef(ls);
             break;
-        case Token::PP_UNDEF:
+        case Token::WTOK_PP_UNDEF:
             if (NeedExpand())
                 ParseUndef(ls);
             break;
-        case Token::PP_VERSION:
+        case Token::WTOK_PP_VERSION:
             if (NeedExpand())
                 ParseVersion(ls);
             break;
-        case Token::PP_LINE:
+        case Token::WTOK_PP_LINE:
             if (NeedExpand())
                 ParseLine(ls);
             break;
-        case Token::PP_ERROR:
+        case Token::WTOK_PP_ERROR:
             if (NeedExpand())
                 ParseError(ls);
             break;
-        case Token::PP_PRAGMA:
+        case Token::WTOK_PP_PRAGMA:
             if (NeedExpand())
                 ParsePragma(ls);
             break;
-        case Token::PP_NONE:
+        case Token::WTOK_PP_NONE:
             break;
         default:
             assert(false);
@@ -446,7 +446,7 @@ namespace pp
         auto directive = ls.Next(); // Skip directive 'version'
         TokenSequence ts;
         Expand(ts, ls);
-        auto tok = ts.Expect(Token::I_CONSTANT);
+        auto tok = ts.Expect(Token::WTOK_I_CONSTANT);
 
         int ver = 0;
         size_t end = 0;
@@ -459,7 +459,7 @@ namespace pp
         if (ts.Empty())
             return;
 
-        tok = ts.Expect(Token::LITERAL);
+        tok = ts.Expect(Token::WTOK_LITERAL);
         //  tok = "es", "core", etc...
     }
 
@@ -468,7 +468,7 @@ namespace pp
         auto directive = ls.Next(); // Skip directive 'line'
         TokenSequence ts;
         Expand(ts, ls);
-        auto tok = ts.Expect(Token::I_CONSTANT);
+        auto tok = ts.Expect(Token::WTOK_I_CONSTANT);
 
         int line = 0;
         size_t end = 0;
@@ -486,7 +486,7 @@ namespace pp
         lineLine_ = directive->loc_.line_;
         if (ts.Empty())
             return;
-        tok = ts.Expect(Token::LITERAL);
+        tok = ts.Expect(Token::WTOK_LITERAL);
 
         // Enusure "s-char-sequence"
         if (tok->str_.front() != '"' || tok->str_.back() != '"') {
@@ -497,7 +497,7 @@ namespace pp
 
     void Preprocessor::ParseIf(TokenSequence ls) {
         if (!NeedExpand()) {
-            ppCondStack_.push({ Token::PP_IF, false, false });
+            ppCondStack_.push({ Token::WTOK_PP_IF, false, false });
             return;
         }
 
@@ -523,24 +523,24 @@ namespace pp
         else {
             cond = static_cast<bool>(Evaluator<long>().Eval(expr));
         }
-        ppCondStack_.push({ Token::PP_IF, NeedExpand(), cond });
+        ppCondStack_.push({ Token::WTOK_PP_IF, NeedExpand(), cond });
     }
 
 
     void Preprocessor::ParseIfdef(TokenSequence ls) {
         if (!NeedExpand()) {
-            ppCondStack_.push({ Token::PP_IFDEF, false, false });
+            ppCondStack_.push({ Token::WTOK_PP_IFDEF, false, false });
             return;
         }
 
         ls.Next();
-        auto ident = ls.Expect(Token::IDENTIFIER);
+        auto ident = ls.Expect(Token::WTOK_IDENTIFIER);
         if (!ls.Empty()) {
             Error(ls.Peek(), "expect new line");
         }
 
         auto cond = FindMacro(ident->str_) != nullptr;
-        ppCondStack_.push({ Token::PP_IFDEF, NeedExpand(), cond });
+        ppCondStack_.push({ Token::WTOK_PP_IFDEF, NeedExpand(), cond });
     }
 
 
@@ -548,7 +548,7 @@ namespace pp
         ParseIfdef(ls);
         auto top = ppCondStack_.top();
         ppCondStack_.pop();
-        top.tag_ = Token::PP_IFNDEF;
+        top.tag_ = Token::WTOK_PP_IFNDEF;
         top.cond_ = !top.cond_;
 
         ppCondStack_.push(top);
@@ -561,14 +561,14 @@ namespace pp
         if (ppCondStack_.empty())
             Error(directive, "unexpected 'elif' directive");
         auto top = ppCondStack_.top();
-        if (top.tag_ == Token::PP_ELSE)
+        if (top.tag_ == Token::WTOK_PP_ELSE)
             Error(directive, "unexpected 'elif' directive");
 
         while (!ppCondStack_.empty()) {
             top = ppCondStack_.top();
-            if (top.tag_ == Token::PP_IF ||
-                top.tag_ == Token::PP_IFDEF ||
-                top.tag_ == Token::PP_IFNDEF ||
+            if (top.tag_ == Token::WTOK_PP_IF ||
+                top.tag_ == Token::WTOK_PP_IFDEF ||
+                top.tag_ == Token::WTOK_PP_IFNDEF ||
                 top.cond_) {
                 break;
             }
@@ -578,7 +578,7 @@ namespace pp
             Error(directive, "unexpected 'elif' directive");
         auto enabled = top.enabled_;
         if (!enabled) {
-            ppCondStack_.push({ Token::PP_ELIF, false, false });
+            ppCondStack_.push({ Token::WTOK_PP_ELIF, false, false });
             return;
         }
 
@@ -604,7 +604,7 @@ namespace pp
             cond = static_cast<bool>(Evaluator<long>().Eval(expr));
         }
         cond = cond && !top.cond_;
-        ppCondStack_.push({ Token::PP_ELIF, true, cond });
+        ppCondStack_.push({ Token::WTOK_PP_ELIF, true, cond });
     }
 
 
@@ -616,14 +616,14 @@ namespace pp
         if (ppCondStack_.empty())
             Error(directive, "unexpected 'else' directive");
         auto top = ppCondStack_.top();
-        if (top.tag_ == Token::PP_ELSE)
+        if (top.tag_ == Token::WTOK_PP_ELSE)
             Error(directive, "unexpected 'else' directive");
 
         while (!ppCondStack_.empty()) {
             top = ppCondStack_.top();
-            if (top.tag_ == Token::PP_IF ||
-                top.tag_ == Token::PP_IFDEF ||
-                top.tag_ == Token::PP_IFNDEF ||
+            if (top.tag_ == Token::WTOK_PP_IF ||
+                top.tag_ == Token::WTOK_PP_IFDEF ||
+                top.tag_ == Token::WTOK_PP_IFNDEF ||
                 top.cond_) {
                 break;
             }
@@ -634,7 +634,7 @@ namespace pp
 
         auto cond = !top.cond_;
         auto enabled = top.enabled_;
-        ppCondStack_.push({ Token::PP_ELSE, enabled, cond });
+        ppCondStack_.push({ Token::WTOK_PP_ELSE, enabled, cond });
     }
 
 
@@ -647,9 +647,9 @@ namespace pp
             auto top = ppCondStack_.top();
             ppCondStack_.pop();
 
-            if (top.tag_ == Token::PP_IF
-                || top.tag_ == Token::PP_IFDEF
-                || top.tag_ == Token::PP_IFNDEF) {
+            if (top.tag_ == Token::WTOK_PP_IF
+                || top.tag_ == Token::WTOK_PP_IFDEF
+                || top.tag_ == Token::WTOK_PP_IFNDEF) {
                 return;
             }
         }
@@ -662,14 +662,14 @@ namespace pp
     // Have Read the '#'
     void Preprocessor::ParseInclude(TokenSequence& is, TokenSequence ls) {
         bool next = ls.Next()->str_ == "include_next"; // Skip 'include'
-        if (!ls.Test(Token::LITERAL) && !ls.Test('<')) {
+        if (!ls.Test(Token::WTOK_LITERAL) && !ls.Test('<')) {
             TokenSequence ts;
             Expand(ts, ls, true);
             ls = ts;
         }
 
         auto tok = ls.Next();
-        if (tok->tag_ == Token::LITERAL) {
+        if (tok->tag_ == Token::WTOK_LITERAL) {
             if (!ls.Empty()) {
                 Error(ls.Peek(), "expect new line");
             }
@@ -714,7 +714,7 @@ namespace pp
     void Preprocessor::ParseUndef(TokenSequence ls) {
         ls.Next(); // Skip directive
 
-        auto ident = ls.Expect(Token::IDENTIFIER);
+        auto ident = ls.Expect(Token::WTOK_IDENTIFIER);
         if (!ls.Empty())
             Error(ls.Peek(), "expect new line");
 
@@ -724,7 +724,7 @@ namespace pp
 
     void Preprocessor::ParseDef(TokenSequence ls) {
         ls.Next();
-        auto ident = ls.Expect(Token::IDENTIFIER);
+        auto ident = ls.Expect(Token::WTOK_IDENTIFIER);
         if (ident->str_ == "defined") {
             Error(ident, "'defined' cannot be used as a macro name");
         }
@@ -753,11 +753,11 @@ namespace pp
             if (tok->tag_ == ')') {
                 return false;
             }
-            else if (tok->tag_ == Token::ELLIPSIS) {
+            else if (tok->tag_ == Token::WTOK_ELLIPSIS) {
                 is.Expect(')');
                 return true;
             }
-            else if (tok->tag_ != Token::IDENTIFIER) {
+            else if (tok->tag_ != Token::WTOK_IDENTIFIER) {
                 Error(tok, "expect identifier");
             }
 
@@ -894,7 +894,7 @@ namespace pp
 
     void Preprocessor::HandleTheFileMacro(TokenSequence& os, const Token* macro) {
         auto file = Token::New(*macro);
-        file->tag_ = Token::LITERAL;
+        file->tag_ = Token::WTOK_LITERAL;
         file->str_ = "\"" + *macro->loc_.filename_ + "\"";
         os.InsertBack(file);
     }
@@ -902,7 +902,7 @@ namespace pp
 
     void Preprocessor::HandleTheLineMacro(TokenSequence& os, const Token* macro) {
         auto line = Token::New(*macro);
-        line->tag_ = Token::I_CONSTANT;
+        line->tag_ = Token::WTOK_I_CONSTANT;
         line->str_ = std::to_string(macro->loc_.line_);
         os.InsertBack(line);
     }

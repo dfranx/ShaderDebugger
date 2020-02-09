@@ -42,17 +42,17 @@ namespace pp
         case '|': val_ = LL | LR; break;
         case '&': val_ = LL & LR; break;
         case '^': val_ = LL ^ LR; break;
-        case Token::LEFT: val_ = LL << LR; break;
-        case Token::RIGHT: val_ = LL >> LR; break;
+        case Token::WTOK_LEFT: val_ = LL << LR; break;
+        case Token::WTOK_RIGHT: val_ = LL >> LR; break;
 
         case '<': val_ = L < R; break;
         case '>': val_ = L > R; break;
-        case Token::LOGICAL_AND: val_ = L && R; break;
-        case Token::LOGICAL_OR: val_ = L || R; break;
-        case Token::EQ: val_ = L == R; break;
-        case Token::NE: val_ = L != R; break;
-        case Token::LE: val_ = L <= R; break;
-        case Token::GE: val_ = L >= R; break;
+        case Token::WTOK_LOGICAL_AND: val_ = L && R; break;
+        case Token::WTOK_LOGICAL_OR: val_ = L || R; break;
+        case Token::WTOK_EQ: val_ = L == R; break;
+        case Token::WTOK_NE: val_ = L != R; break;
+        case Token::WTOK_LE: val_ = L <= R; break;
+        case Token::WTOK_GE: val_ = L >= R; break;
         case '=': case ',': val_ = R; break;
         case '.': {
             auto addr = Evaluator<Addr>().Eval(binary);
@@ -76,17 +76,17 @@ namespace pp
 #define LVAL    Evaluator<long>().Eval(unary->operand_)
 
         switch (unary->op_) {
-        case Token::PLUS: val_ = VAL; break;
-        case Token::MINUS: val_ = -VAL; break;
+        case Token::WTOK_PLUS: val_ = VAL; break;
+        case Token::WTOK_MINUS: val_ = -VAL; break;
         case '~': val_ = ~LVAL; break;
         case '!': val_ = !VAL; break;
-        case Token::CAST:
+        case Token::WTOK_CAST:
             if (unary->Type()->IsInteger())
                 val_ = static_cast<long>(VAL);
             else
                 val_ = VAL;
             break;
-        case Token::ADDR: {
+        case Token::WTOK_ADDR: {
             auto addr = Evaluator<Addr>().Eval(unary->operand_);
             if (addr.label_.size())
                 Error(unary, "expect constant expression");
@@ -169,9 +169,9 @@ namespace pp
         auto addr = Evaluator<Addr>().Eval(unary->operand_);
 
         switch (unary->op_) {
-        case Token::CAST:
-        case Token::ADDR:
-        case Token::DEREF:
+        case Token::WTOK_CAST:
+        case Token::WTOK_ADDR:
+        case Token::WTOK_DEREF:
             addr_ = addr; break;
         default: assert(false);
         }

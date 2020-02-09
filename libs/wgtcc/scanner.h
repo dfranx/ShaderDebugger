@@ -20,7 +20,7 @@ namespace pp
         explicit Scanner(const std::string* text,
             const std::string* filename = nullptr,
             unsigned line = 1, unsigned column = 1)
-            : text_(text), tok_(Token::END) {
+            : text_(text), tok_(Token::WTOK_END) {
             // TODO(wgtdkp): initialization
             p_ = &(*text_)[0];
             loc_ = { filename, p_, line, 1 };

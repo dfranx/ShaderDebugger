@@ -382,7 +382,7 @@ namespace pp
         UnaryOp(int op, Expr* operand, QualType type = nullptr)
             : Expr(operand->Tok(), type), op_(op) {
             operand_ = operand;
-            if (op_ != Token::CAST && op_ != Token::ADDR) {
+            if (op_ != Token::WTOK_CAST && op_ != Token::WTOK_ADDR) {
                 operand_ = MayCast(operand);
             }
         }

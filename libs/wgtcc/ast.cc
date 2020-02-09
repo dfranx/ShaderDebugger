@@ -128,7 +128,7 @@ namespace pp
         auto type = Type::MayCast(expr->Type());
         // If the types are equal, no need cast
         if (type != expr->Type()) { // Pointer comparison is enough
-            return UnaryOp::New(Token::CAST, expr, type);
+            return UnaryOp::New(Token::WTOK_CAST, expr, type);
         }
         return expr;
     }
@@ -141,7 +141,7 @@ namespace pp
             if (desType->IsVoidPointer() || srcType->IsVoidPointer())
                 return expr;
         if (!desType->Compatible(*expr->Type()))
-            expr = UnaryOp::New(Token::CAST, expr, desType);
+            expr = UnaryOp::New(Token::WTOK_CAST, expr, desType);
         return expr;
     }
 
@@ -158,14 +158,14 @@ namespace pp
         case '+': case '-': case '&':
         case '^': case '|': case '<':
         case '>':
-        case Token::LEFT:
-        case Token::RIGHT:
-        case Token::LE:
-        case Token::GE:
-        case Token::EQ:
-        case Token::NE:
-        case Token::LOGICAL_AND:
-        case Token::LOGICAL_OR:
+        case Token::WTOK_LEFT:
+        case Token::WTOK_RIGHT:
+        case Token::WTOK_LE:
+        case Token::WTOK_GE:
+        case Token::WTOK_EQ:
+        case Token::WTOK_NE:
+        case Token::WTOK_LOGICAL_AND:
+        case Token::WTOK_LOGICAL_OR:
             break;
         default:
             assert(0);
@@ -186,10 +186,10 @@ namespace pp
         assert(lhsType && rhsType);
         auto type = ArithmType::MaxType(lhsType, rhsType);
         if (lhsType != type) { // Pointer comparation is enough!
-            lhs_ = UnaryOp::New(Token::CAST, lhs_, type);
+            lhs_ = UnaryOp::New(Token::WTOK_CAST, lhs_, type);
         }
         if (rhsType != type) {
-            rhs_ = UnaryOp::New(Token::CAST, rhs_, type);
+            rhs_ = UnaryOp::New(Token::WTOK_CAST, rhs_, type);
         }
 
         return type;
@@ -230,18 +230,18 @@ namespace pp
         case '-':
             return AdditiveOpTypeChecking();
 
-        case Token::LEFT:
-        case Token::RIGHT:
+        case Token::WTOK_LEFT:
+        case Token::WTOK_RIGHT:
             return ShiftOpTypeChecking();
 
         case '<':
         case '>':
-        case Token::LE:
-        case Token::GE:
+        case Token::WTOK_LE:
+        case Token::WTOK_GE:
             return RelationalOpTypeChecking();
 
-        case Token::EQ:
-        case Token::NE:
+        case Token::WTOK_EQ:
+        case Token::WTOK_NE:
             return EqualityOpTypeChecking();
 
         case '&':
@@ -249,8 +249,8 @@ namespace pp
         case '|':
             return BitwiseOpTypeChecking();
 
-        case Token::LOGICAL_AND:
-        case Token::LOGICAL_OR:
+        case Token::WTOK_LOGICAL_AND:
+        case Token::WTOK_LOGICAL_OR:
             return LogicalOpTypeChecking();
 
         case '=':
@@ -436,7 +436,7 @@ namespace pp
 
     bool UnaryOp::IsLVal() {
         // Only deref('*') could be lvalue;
-        return op_ == Token::DEREF;
+        return op_ == Token::WTOK_DEREF;
     }
 
 
@@ -452,25 +452,25 @@ namespace pp
 
     void UnaryOp::TypeChecking() {
         switch (op_) {
-        case Token::POSTFIX_INC:
-        case Token::POSTFIX_DEC:
-        case Token::PREFIX_INC:
-        case Token::PREFIX_DEC:
+        case Token::WTOK_POSTFIX_INC:
+        case Token::WTOK_POSTFIX_DEC:
+        case Token::WTOK_PREFIX_INC:
+        case Token::WTOK_PREFIX_DEC:
             return IncDecOpTypeChecking();
 
-        case Token::ADDR:
+        case Token::WTOK_ADDR:
             return AddrOpTypeChecking();
 
-        case Token::DEREF:
+        case Token::WTOK_DEREF:
             return DerefOpTypeChecking();
 
-        case Token::PLUS:
-        case Token::MINUS:
+        case Token::WTOK_PLUS:
+        case Token::WTOK_MINUS:
         case '~':
         case '!':
             return UnaryArithmOpTypeChecking();
 
-        case Token::CAST:
+        case Token::WTOK_CAST:
             return CastOpTypeChecking();
 
         default:
@@ -511,7 +511,7 @@ namespace pp
 
 
     void UnaryOp::UnaryArithmOpTypeChecking() {
-        if (Token::PLUS == op_ || Token::MINUS == op_) {
+        if (Token::WTOK_PLUS == op_ || Token::WTOK_MINUS == op_) {
             if (!operand_->Type()->ToArithm())
                 Error(this, "Arithmetic type expected");
             Convert();
@@ -575,10 +575,10 @@ namespace pp
         assert(lhsType && rhsType);
         auto type = ArithmType::MaxType(lhsType, rhsType);
         if (lhsType != type) { // Pointer comparation is enough!
-            exprTrue_ = UnaryOp::New(Token::CAST, exprTrue_, type);
+            exprTrue_ = UnaryOp::New(Token::WTOK_CAST, exprTrue_, type);
         }
         if (rhsType != type) {
-            exprFalse_ = UnaryOp::New(Token::CAST, exprFalse_, type);
+            exprFalse_ = UnaryOp::New(Token::WTOK_CAST, exprFalse_, type);
         }
 
         return type;
@@ -621,7 +621,7 @@ namespace pp
             if (!pointerType->Derived()->ToFunc())
                 Error(designator_, "called object is not a function or function pointer");
             // Convert function pointer to function type
-            designator_ = UnaryOp::New(Token::DEREF, designator_);
+            designator_ = UnaryOp::New(Token::WTOK_DEREF, designator_);
         }
         auto funcType = designator_->Type()->ToFunc();
         if (!funcType) {
@@ -646,7 +646,7 @@ namespace pp
         while (arg != args_.end()) {
             if ((*arg)->Type()->IsFloat() && (*arg)->Type()->Width() == 4) {
                 auto type = ArithmType::New(T_DOUBLE);
-                *arg = UnaryOp::New(Token::CAST, *arg, type);
+                *arg = UnaryOp::New(Token::WTOK_CAST, *arg, type);
             }
             ++arg;
         }

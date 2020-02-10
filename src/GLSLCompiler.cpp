@@ -268,7 +268,7 @@ namespace sd
 		else
 			var.Type = ((glsl::astStruct*)variable->baseType)->name;
 
-		if (isTypeActuallyStruct(var.Type))
+		if (isTypeActuallyStruct(var.Type) && (variable->storage != glsl::kUniform && variable->storage != glsl::kIn))
 			m_initObjsInMain[var.Name] = var.Type;
 
 		// TODO: global arrays

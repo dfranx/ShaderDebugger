@@ -1358,7 +1358,7 @@ namespace sd
 				// if (type.flags & M4::HLSLTypeFlag_Static) {}
 			}
 
-			if (m_isTypeActuallyStruct(expType))
+			if (m_isTypeActuallyStruct(expType) && var.Storage != Variable::StorageType::Uniform)
 				m_initObjsInMain[var.Name] = var.Type;
 
 			if (var.IsArray)

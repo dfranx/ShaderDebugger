@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.1)
 project(ShaderDebugger)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+
 # source code
 set(SOURCES
 	src/Utils.cpp

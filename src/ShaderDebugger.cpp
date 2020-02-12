@@ -474,10 +474,6 @@ namespace sd
 			bv_program_delete(m_prog);
 			m_prog = nullptr;
 		}
-		if (m_library != nullptr) {
-			bv_library_delete(m_library);
-			m_library = nullptr;
-		}
 		if (m_stepper != nullptr) {
 			bv_function_stepper_delete(m_stepper);
 			m_stepper = nullptr;

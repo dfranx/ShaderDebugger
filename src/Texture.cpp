@@ -30,18 +30,20 @@ namespace sd
 		Depth = d;
 		MipmapLevels = 1;
 
-		Data = (float**)malloc(sizeof(float*) * MipmapLevels);
+		Data = (uint8_t**)malloc(sizeof(uint8_t*) * MipmapLevels);
 		
 		// TODO: mipmaps
-		Data[0] = (float*)malloc(sizeof(float) * w * h * d * 4);
+		Data[0] = (uint8_t*)malloc(sizeof(uint8_t) * w * h * d * 4);
 
 		return true;
 	}
 	void Texture::Fill(glm::vec4 val)
 	{
+		uint8_t byteVal[4] = { val.x * 255, val.y * 255, val.z * 255, val.w * 255 };
+
 		// TODO: mipmaps
 		for (int i = 0; i < Width * Height * Depth; i++)
-			memcpy(Data[0] + i * 4, (void*)glm::value_ptr(val), sizeof(float) * 4);
+			memcpy(Data[0] + i * 4, byteVal, sizeof(uint8_t) * 4);
 	}
 	glm::vec4 Texture::Sample(float u, float v, float w, float mip)
 	{
@@ -66,9 +68,9 @@ namespace sd
 		// clamp mipmap level
 		m = std::min(MipmapLevels, std::max(0, m));
 
-		float* mem = &Data[m][(x + Width * (y + Depth * z)) * 4];
+		uint8_t* mem = &Data[m][(x + Width * (y + Depth * z)) * 4];
 
-		return glm::vec4(mem[0], mem[1], mem[2], mem[3]);
+		return glm::vec4(mem[0] / 255.0f, mem[1] / 255.0f, mem[2] / 255.0f, mem[3] / 255.0f);
 	}
 	glm::vec4 Texture::TexelFetch(int u, int v, int w, int mip)
 	{
@@ -83,9 +85,9 @@ namespace sd
 		// clamp mipmap level
 		mip = std::min(MipmapLevels, std::max(0, mip));
 
-		float* mem = &Data[mip][(u + Width * (v + Depth * w)) * 4];
+		uint8_t* mem = &Data[mip][(u + Width * (v + Depth * w)) * 4];
 
-		return glm::vec4(mem[0], mem[1], mem[2], mem[3]);
+		return glm::vec4(mem[0] / 255.0f, mem[1] / 255.0f, mem[2] / 255.0f, mem[3] / 255.0f);
 	}
 	void Texture::m_cleanup()
 	{

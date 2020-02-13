@@ -9,7 +9,7 @@ namespace sd
 		Texture();
 		~Texture();
 
-		float** Data; // [MipmapLevels][Width * Height * Depth * 4] -> must have 4 components
+		uint8_t** Data; // [MipmapLevels][Width * Height * Depth * 4] -> must have 4 components
 		int Width, Height, Depth;
 		int MipmapLevels;
 

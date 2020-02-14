@@ -1103,6 +1103,7 @@ namespace sd
 				fieldData.Type = etype.Name;
 				fieldData.Semantic = field->sv_semantic ? field->sv_semantic : (field->semantic ? field->semantic : "");
 				fieldData.IsArray = ftype.array;
+				fieldData.Flat = ftype.flags & M4::HLSLTypeFlag_NoInterpolation;
 				
 				str.Members.push_back(fieldData);
 			}

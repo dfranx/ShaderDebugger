@@ -286,6 +286,9 @@ namespace sd
 			ClearDefinitions();
 		m_gen.Reset();
 
+		for (const auto& str : m_stringTable)
+			m_gen.AddString(str);
+
 		PropertyGetter = HLSL::Swizzle;
 		ObjectConstructor = Common::DefaultConstructor;
 

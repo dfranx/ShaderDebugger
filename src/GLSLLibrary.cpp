@@ -43,6 +43,9 @@ namespace sd
 		/* swizzle */
 		bv_variable Swizzle(bv_program* prog, bv_object* obj, const bv_string field)
 		{
+			if (obj == nullptr)
+				return bv_variable_create_void();
+
 			const char* rgba = "rgba\0";
 			const char* xyzw = "xyzw\0";
 			const char* stpq = "stpq\0";

@@ -34,12 +34,15 @@ namespace sd
 		inline void AddFunctionDefinition(const Function& func) { m_func.push_back(func); }
 		inline void AddStructureDefinition(const Structure& str) { m_structures.push_back(str); }
 		inline void AddGlobalDefinition(const Variable& var) { m_globals.push_back(var); }
-		inline void ClearDefinitions() { m_globals.clear(); m_structures.clear(); m_func.clear(); m_locals.clear(); m_localTypes.clear(); ClearImmediate(); }
+		inline void ClearDefinitions() { m_stringTable.clear(); m_globals.clear(); m_structures.clear(); m_func.clear(); m_locals.clear(); m_localTypes.clear(); ClearImmediate(); }
 
 		virtual bool Parse(ShaderType type, const std::string& source, std::string entry = "main") = 0;
 
 		virtual void ClearImmediate() = 0;
 		virtual void AddImmediateGlobalDefinition(Variable var) = 0;
+
+		inline void AddStringTableEntry(const std::string& str) { m_stringTable.push_back(str); }
+		inline const std::vector<std::string>& GetStringTable() { return m_gen.GetStringTable(); }
 
 		bv_object_get_property_ext PropertyGetter;
 		bv_object_default_constructor_ext ObjectConstructor;
@@ -76,6 +79,7 @@ namespace sd
 		std::vector<Function> m_func;
 		std::unordered_map<std::string, std::vector<std::string>> m_locals;
 		std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_localTypes;
+		std::vector<std::string> m_stringTable;
 
 		pp::MacroMap m_macros;
 	};

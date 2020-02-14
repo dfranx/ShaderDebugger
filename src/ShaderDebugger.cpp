@@ -349,6 +349,11 @@ namespace sd
 
 		m_immCompiler->ClearDefinitions();
 
+		// pass string table
+		const std::vector<std::string>& strtable = m_compiler->GetStringTable();
+		for (const std::string& str : strtable)
+			m_immCompiler->AddStringTableEntry(str);
+
 		// pass the function definitions
 		const std::vector<sd::Function>& funcs = m_compiler->GetFunctions();
 		for (const auto& func : funcs)

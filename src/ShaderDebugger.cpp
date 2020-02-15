@@ -138,8 +138,6 @@ namespace sd
 	{
 		assert(m_prog != nullptr);
 
-		if (m_args != nullptr)
-			bv_stack_delete(m_args);
 		if (m_stepper != nullptr)
 			bv_function_stepper_delete(m_stepper);
 
@@ -265,8 +263,8 @@ namespace sd
 				else {
 					bv_variable condRes = Immediate(m_breakpoints[i].Condition);
 					bool ret = false;
-					if (condRes.type == bv_type_uchar || condRes.type == bv_type_char)
-						ret = bv_variable_get_uchar(condRes);
+					if (bv_type_is_integer(condRes.type))
+						ret = bv_variable_get_int(condRes);
 					bv_variable_deinitialize(&condRes);
 					return ret;
 				}
@@ -323,6 +321,9 @@ namespace sd
 		updatedFStack = GetFunctionStack();
 
 		while (updatedFStack.size() > fstack.size() && done) {
+			if (m_checkBreakpoint(GetCurrentLine()))
+				return done;
+
 			done = Step();
 			updatedFStack = GetFunctionStack();
 		}
@@ -337,6 +338,9 @@ namespace sd
 		updatedFStack = GetFunctionStack();
 
 		while (updatedFStack.size() >= fstack.size() && done) {
+			if (m_checkBreakpoint(GetCurrentLine()))
+				return done;
+
 			done = Step();
 			updatedFStack = GetFunctionStack();
 		}
@@ -475,17 +479,13 @@ namespace sd
 			delete m_compiler;
 		if (m_immCompiler != nullptr)
 			delete m_immCompiler;
-		if (m_prog != nullptr) {
-			bv_program_delete(m_prog);
-			m_prog = nullptr;
-		}
 		if (m_stepper != nullptr) {
 			bv_function_stepper_delete(m_stepper);
 			m_stepper = nullptr;
 		}
-		if (m_args != nullptr) {
-			bv_stack_delete(m_args);
-			m_args = nullptr;
+		if (m_prog != nullptr) {
+			bv_program_delete(m_prog);
+			m_prog = nullptr;
 		}
 	}
 }

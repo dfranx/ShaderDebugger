@@ -290,20 +290,7 @@ namespace sd
 		
 		bool found = false;
 
-		// globals
-		for (int i = 0; i < m_globals.size(); i++)
-			if (m_globals[i].Name == vdata->name) {
-				if (!m_isSet) {
-					if (m_usePointer) m_gen.Function.GetGlobalPointer(m_globals[i].ID);
-					else m_gen.Function.GetGlobal(m_globals[i].ID);
-				} else
-					m_gen.Function.SetGlobal(m_globals[i].ID);
-
-				found = true;
-				break;
-			}
-
-		if (m_currentFunction.size() != 0 && !found) {
+		if (m_currentFunction.size() != 0) {
 			// locals
 			for (int i = 0; i < m_locals[m_currentFunction].size(); i++) {
 				if (m_locals[m_currentFunction][i] == vdata->name) {
@@ -345,6 +332,22 @@ namespace sd
 					}
 				}
 			}
+		}
+
+		// globals
+		if (!found) {
+			for (int i = 0; i < m_globals.size(); i++)
+				if (m_globals[i].Name == vdata->name) {
+					if (!m_isSet) {
+						if (m_usePointer) m_gen.Function.GetGlobalPointer(m_globals[i].ID);
+						else m_gen.Function.GetGlobal(m_globals[i].ID);
+					}
+					else
+						m_gen.Function.SetGlobal(m_globals[i].ID);
+
+					found = true;
+					break;
+				}
 		}
 
 		if (!found) {
@@ -489,7 +492,18 @@ namespace sd
 		
 		glsl::astVariable* vdata = (glsl::astVariable*)variable;
 
-		m_locals[m_currentFunction].push_back(vdata->name);
+		bool alreadyExists = false;
+		size_t varIndex = 0;
+		for (size_t i = 0; i < m_locals[m_currentFunction].size(); i++)
+			if (m_locals[m_currentFunction][i] == vdata->name) {
+				varIndex = i;
+				alreadyExists = true;
+				break;
+			}
+		if (!alreadyExists) {
+			m_locals[m_currentFunction].push_back(vdata->name);
+			varIndex = m_locals[m_currentFunction].size() - 1;
+		}
 
 		if (!vdata->baseType->builtin)
 			m_localTypes[m_currentFunction][vdata->name] = ((glsl::astStruct*)vdata->baseType)->name;
@@ -505,7 +519,7 @@ namespace sd
 			if (lType != rType)
 				generateConvert(lType);
 
-			m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+			m_gen.Function.SetLocal(varIndex);
 		}
 
 
@@ -514,7 +528,7 @@ namespace sd
 
 			if (!variable->initialValue) {
 				m_gen.Function.NewObjectByName(structName);
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				m_gen.Function.SetLocal(varIndex);
 			}
 
 			// printf("[DEBUG] Declaring variable %s with type %s\n", vdata->name, structName.c_str());
@@ -525,12 +539,12 @@ namespace sd
 			if (!variable->initialValue) {
 				if (isTypeActuallyStruct(structName)) {
 					m_gen.Function.NewObjectByName(structName, 0);
-					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+					m_gen.Function.SetLocal(varIndex);
 				}
 				else {
 					m_gen.Function.PushStack(0);
 					generateConvert(lType);
-					m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+					m_gen.Function.SetLocal(varIndex);
 				}
 			}
 		}

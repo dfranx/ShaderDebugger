@@ -1682,7 +1682,7 @@ namespace sd
 			bv_library_add_function(lib, "noise2", lib_glsl_noise2);
 			bv_library_add_function(lib, "noise3", lib_glsl_noise3);
 			bv_library_add_function(lib, "noise4", lib_glsl_noise4);
-			bv_library_add_function(lib, "pow", lib_glsl_noise4);
+			bv_library_add_function(lib, "pow", Common::lib_common_pow);
 			bv_library_add_function(lib, "round", Common::lib_common_round);
 			bv_library_add_function(lib, "roundEven", lib_glsl_roundEven);
 			bv_library_add_function(lib, "sign", Common::lib_common_sign);

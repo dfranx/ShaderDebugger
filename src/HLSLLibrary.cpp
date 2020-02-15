@@ -546,6 +546,7 @@ namespace sd
 			bv_library_add_function(lib, "fwidth", Common::lib_common_fwidth);
 			bv_library_add_function(lib, "rcp", lib_hlsl_rcp);
 			bv_library_add_function(lib, "rsqrt", Common::lib_common_inversesqrt);
+			bv_library_add_function(lib, "pow", Common::lib_common_pow);
 			bv_library_add_function(lib, "isinf", Common::lib_common_isinf);
 			bv_library_add_function(lib, "isnan", Common::lib_common_isnan);
 			bv_library_add_function(lib, "isfinite", lib_hlsl_isfinite);

@@ -492,7 +492,7 @@ namespace sd
 					// vec * mat
 					else {
 						sd::Matrix* matData = (sd::Matrix*)vec->user_data;
-						glm::vec4 retVec = multiply_mat_vec(*matData, me, 1);
+						glm::vec4 retVec = multiply_mat_vec(*matData, me, isGLSL(prog));
 						ret = create_vec(prog, matData->Type, me->type->props.name_count);
 						bv_object* retObj = bv_variable_get_object(ret);
 						for (u16 i = 0; i < retObj->type->props.name_count; i++)
@@ -669,7 +669,7 @@ namespace sd
 					// mat * vec
 					else
 					{
-						glm::vec4 retVec = multiply_mat_vec(*myData, obj);
+						glm::vec4 retVec = multiply_mat_vec(*myData, obj, !isGLSL(prog));
 						ret = create_vec(prog, myData->Type, obj->type->props.name_count);
 						bv_object* retObj = bv_variable_get_object(ret);
 						for (u16 i = 0; i < retObj->type->props.name_count; i++)

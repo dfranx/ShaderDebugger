@@ -714,20 +714,6 @@ namespace sd
 		const std::string vname = std::string(expression->name);
 		bool found = false;
 
-		// globals
-		for (int i = 0; i < m_globals.size(); i++)
-			if (m_globals[i].Name == vname) {
-				if (!m_isSet) {
-					if (m_usePointer) m_gen.Function.GetGlobalPointer(m_globals[i].ID);
-					else m_gen.Function.GetGlobal(m_globals[i].ID);
-				}
-				else
-					m_gen.Function.SetGlobal(m_globals[i].ID);
-
-				found = true;
-				break;
-			}
-
 		if (m_currentFunction.size() != 0 && !found) {
 			// locals
 			for (int i = 0; i < m_locals[m_currentFunction].size(); i++) {
@@ -770,6 +756,22 @@ namespace sd
 					}
 				}
 			}
+		}
+
+		if (!found) {
+			// globals
+			for (int i = 0; i < m_globals.size(); i++)
+				if (m_globals[i].Name == vname) {
+					if (!m_isSet) {
+						if (m_usePointer) m_gen.Function.GetGlobalPointer(m_globals[i].ID);
+						else m_gen.Function.GetGlobal(m_globals[i].ID);
+					}
+					else
+						m_gen.Function.SetGlobal(m_globals[i].ID);
+
+					found = true;
+					break;
+				}
 		}
 
 		if (!found) {

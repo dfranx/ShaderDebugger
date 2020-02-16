@@ -41,6 +41,8 @@ namespace sd
 			ret[0] = bv_variable_get_uchar(var);
 		else if (var.type == bv_type_float)
 			ret[0] = bv_variable_get_float(var);
+		else if (var.type == bv_type_pointer)
+			ret = AsVector<c, t>(*bv_variable_get_pointer(var));
 
 		return ret;
 	}

@@ -9,9 +9,11 @@ namespace sd
 		Texture();
 		~Texture();
 
-		uint8_t** Data; // [MipmapLevels][Width * Height * Depth * 4] -> must have 4 components
+		float** Data; // [MipmapLevels][Width * Height * Depth * 4] -> must have 4 components
 		int Width, Height, Depth;
 		int MipmapLevels;
+
+		unsigned int UserData; // you can save your GL texture here (* but don't have to *)
 
 		enum class Filter
 		{

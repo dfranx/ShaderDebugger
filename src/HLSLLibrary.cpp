@@ -614,6 +614,10 @@ namespace sd
 			bv_object_info* samplerState = bv_object_info_create("SamplerState");
 			bv_library_add_object_info(lib, samplerState);
 
+			// sampler
+			bv_object_info* sampler = bv_object_info_create("sampler");
+			bv_library_add_object_info(lib, sampler);
+
 			return lib;
 		}
 	}

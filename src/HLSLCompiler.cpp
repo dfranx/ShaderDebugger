@@ -122,7 +122,7 @@ namespace sd
 		else if (type == "RWTexture1D") return m_convertType(M4::HLSLBaseType_RWTexture1D);
 		else if (type == "RWTexture2D") return m_convertType(M4::HLSLBaseType_RWTexture2D);
 		else if (type == "RWTexture3D") return m_convertType(M4::HLSLBaseType_RWTexture3D);
-		else if (type == "SamplerState") return m_convertType(M4::HLSLBaseType_SamplerState);
+		else if (type == "SamplerState" || type == "sampler") return m_convertType(M4::HLSLBaseType_SamplerState);
 		return m_convertType(M4::HLSLBaseType_UserDefined, type.c_str());
 	}
 	bool HLSLCompiler::m_isTypeActuallyStruct(HLSLCompiler::ExpressionType type)
@@ -591,6 +591,8 @@ namespace sd
 		case M4::HLSLBinaryOp_Div:          m_gen.Function.Divide(); break;
 		case M4::HLSLBinaryOp_Less:         m_gen.Function.Less(); break;
 		case M4::HLSLBinaryOp_Greater:      m_gen.Function.Greater(); break;
+		case M4::HLSLBinaryOp_BitShiftLeft: m_gen.Function.BitLeftShift(); break;
+		case M4::HLSLBinaryOp_BitShiftRight:m_gen.Function.BitRightShift(); break;
 		case M4::HLSLBinaryOp_LessEqual:    m_gen.Function.LessEqual(); break;
 		case M4::HLSLBinaryOp_GreaterEqual: m_gen.Function.GreaterEqual(); break;
 		case M4::HLSLBinaryOp_Equal:        m_gen.Function.Equal(); break;
@@ -1149,7 +1151,7 @@ namespace sd
 			for (auto& gInitClass : m_initObjsInMain) {
 
 				// skip textures and sampler states (TODO: should actually check if register is set, i guess..)
-				if (sd::IsBasicTexture(gInitClass.second.c_str()) || gInitClass.second == "SamplerState")
+				if (sd::IsBasicTexture(gInitClass.second.c_str()) || gInitClass.second == "SamplerState" || gInitClass.second == "sampler")
 					continue;
 
 				size_t varID = 0;

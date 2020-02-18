@@ -326,7 +326,7 @@ namespace sd
 				if (arg->type == bv_type_object) {
 					bv_object* vec = bv_variable_get_object(*arg);
 
-					for (u16 i = 0; i < vec->type->props.name_count; i++) {
+					for (u16 i = 0; i < vec->type->props.name_count && i < size; i++) {
 						me->prop[propSet] = bv_variable_cast(type, vec->prop[i]);
 						propSet++;
 					}

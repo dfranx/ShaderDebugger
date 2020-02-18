@@ -94,7 +94,7 @@ namespace sd
 		m_immGlobals.clear();
 		
         glsl::astTU *tu = p.parse(shaderType, m_isImmediate);
-        if (tu) translate(tu);
+        if (tu && !p.errorOccured()) translate(tu);
         else return false;
 
 		return true;
@@ -363,7 +363,7 @@ namespace sd
 	void GLSLCompiler::translateFieldOrSwizzle(glsl::astFieldOrSwizzle *expression) {
 		bool temp_isSet = m_isSet, temp_usePointer = m_usePointer;
 		m_isSet = false;
-		m_usePointer = true;
+		m_usePointer = (expression->operand->type == glsl::astExpression::kVariableIdentifier); // only use pointers with variable identifiers
 		translateExpression(expression->operand);
 		m_isSet = temp_isSet;
 		m_usePointer = temp_usePointer;

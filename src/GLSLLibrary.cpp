@@ -1,5 +1,6 @@
 #include <ShaderDebugger/GLSLLibrary.h>
 #include <ShaderDebugger/CommonLibrary.h>
+#include <ShaderDebugger/TextureCube.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Matrix.h>
 #include <ShaderDebugger/Utils.h>
@@ -722,6 +723,14 @@ namespace sd
 							return Common::create_int4(prog, glm::ivec4(sample));
 						else if (type == bv_type_uint)
 							return Common::create_uint4(prog, glm::uvec4(sample));
+
+						return Common::create_float4(prog, sample);
+					}
+					else if (IsCubemap(sampler->type->name)) {
+						TextureCube* tex = (TextureCube*)sampler->user_data;
+						glm::vec3 normal = sd::AsVector<3, float>(args[1]);
+
+						glm::vec4 sample = tex->Sample(normal);
 
 						return Common::create_float4(prog, sample);
 					}
@@ -1630,9 +1639,21 @@ namespace sd
 			Common::lib_add_mat(lib, "dmat4x3");
 			Common::lib_add_mat(lib, "dmat4x4");
 
+			// sampler1D
+			bv_object_info* sampler1D = bv_object_info_create("sampler1D");
+			bv_library_add_object_info(lib, sampler1D);
+
 			// sampler2D
 			bv_object_info* sampler2D = bv_object_info_create("sampler2D");
 			bv_library_add_object_info(lib, sampler2D);
+
+			// sampler3D
+			bv_object_info* sampler3D = bv_object_info_create("sampler3D");
+			bv_library_add_object_info(lib, sampler3D);
+
+			// samplerCube
+			bv_object_info* samplerCube = bv_object_info_create("samplerCube");
+			bv_library_add_object_info(lib, samplerCube);
 
 			// trigonometry
 			bv_library_add_function(lib, "acos", Common::lib_common_acos);

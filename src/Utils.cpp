@@ -152,6 +152,16 @@ namespace sd
 				return 1;
 		return 0;
 	}
+	bool IsCubemap(const char* name)
+	{
+		static const std::vector<const char*> names = {
+			"TextureCube", "samplerCube"
+		};
+		for (u16 i = 0; i < names.size(); i++)
+			if (strcmp(names[i], name) == 0)
+				return 1;
+		return 0;
+	}
 	u8 GetTextureDimension(const char* name)
 	{
 		static const std::vector<const char*> names = {

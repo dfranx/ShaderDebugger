@@ -13,6 +13,7 @@ set(SOURCES
 	src/CommonLibrary.cpp
 	src/ShaderDebugger.cpp
 	src/Texture.cpp
+	src/TextureCube.cpp
 	
 # glsl-parser
 	libs/glsl-parser/ast.cpp

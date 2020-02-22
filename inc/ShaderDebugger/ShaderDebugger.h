@@ -3,6 +3,7 @@
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Breakpoint.h>
 #include <ShaderDebugger/CommonLibrary.h>
+#include <ShaderDebugger/TextureCube.h>
 #include <glm/glm.hpp>
 
 #include <fstream>
@@ -112,6 +113,7 @@ namespace sd
 		void SetGlobalValue(const std::string& varName, float value);
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec4 val);
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, sd::Texture* val);
+		bool SetGlobalValue(const std::string& varName, const std::string& classType, sd::TextureCube* val);
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::mat4 val);
 		template <size_t c, typename t>
 		bool SetGlobalValue(const std::string& varName, const std::string& classType, glm::vec<c, t, glm::defaultp> val)

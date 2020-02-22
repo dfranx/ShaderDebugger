@@ -59,6 +59,7 @@ namespace sd
 	bv_type GetVariableTypeFromName(const char* name);
 
 	bool IsBasicTexture(const char* name);
+	bool IsCubemap(const char* name);
 	u8 GetTextureDimension(const char* name);
 
 	sd::Matrix* CopyMatrixData(sd::Matrix* mat);

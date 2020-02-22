@@ -1,6 +1,7 @@
 #include <ShaderDebugger/HLSLLibrary.h>
 #include <ShaderDebugger/CommonLibrary.h>
 #include <ShaderDebugger/ShaderDebugger.h>
+#include <ShaderDebugger/TextureCube.h>
 #include <ShaderDebugger/Texture.h>
 #include <ShaderDebugger/Matrix.h>
 #include <ShaderDebugger/Utils.h>
@@ -457,7 +458,7 @@ namespace sd
 			return ret;
 		}
 
-		/* Texture1/2/3D */
+		/* Texture1/2/3D/Cube */
 		bv_variable lib_hlsl_Texture_Sample(bv_program* prog, bv_object* me, u8 argc, bv_variable* args)
 		{
 			/* TODO: clamp LOD, etc... */
@@ -489,6 +490,15 @@ namespace sd
 
 					glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
 					
+					return Common::create_float4(prog, sample);
+				}
+				// TextureCube
+				else if (IsCubemap(me->type->name)) {
+					TextureCube* tex = (TextureCube*)me->user_data;
+					glm::vec3 normal = sd::AsVector<3, float>(args[1]);
+					
+					glm::vec4 sample = tex->Sample(normal);
+
 					return Common::create_float4(prog, sample);
 				}
 			}
@@ -621,10 +631,25 @@ namespace sd
 			bv_library_add_function(lib, "abort", lib_hlsl_abort);
 			bv_library_add_function(lib, "clip", lib_hlsl_clip);
 
+			// Texture1D
+			bv_object_info* texture1D = bv_object_info_create("Texture1D");
+			bv_object_info_add_ext_method(texture1D, "Sample", lib_hlsl_Texture_Sample);
+			bv_library_add_object_info(lib, texture1D);
+
 			// Texture2D
 			bv_object_info* texture2D = bv_object_info_create("Texture2D");
 			bv_object_info_add_ext_method(texture2D, "Sample", lib_hlsl_Texture_Sample);
 			bv_library_add_object_info(lib, texture2D);
+
+			// Texture3D
+			bv_object_info* texture3D = bv_object_info_create("Texture3D");
+			bv_object_info_add_ext_method(texture3D, "Sample", lib_hlsl_Texture_Sample);
+			bv_library_add_object_info(lib, texture3D);
+
+			// TextureCube
+			bv_object_info* textureCube = bv_object_info_create("TextureCube");
+			bv_object_info_add_ext_method(textureCube, "Sample", lib_hlsl_Texture_Sample);
+			bv_library_add_object_info(lib, textureCube);
 
 			// SamplerState
 			bv_object_info* samplerState = bv_object_info_create("SamplerState");

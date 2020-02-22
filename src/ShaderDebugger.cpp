@@ -116,6 +116,25 @@ namespace sd
 
 		return true;
 	}
+	bool ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, sd::TextureCube* val)
+	{
+		assert(m_prog != nullptr);
+
+		bv_object_info* objInfo = bv_program_get_object_info(m_prog, classType.c_str());
+		if (objInfo == nullptr) {
+			m_error = "The object definition for \'" + classType + "\' doesn't exist.";
+			return false;
+		}
+
+		bv_variable objVar = bv_variable_create_object(objInfo);
+		bv_object* obj = bv_variable_get_object(objVar);
+
+		obj->user_data = (void*)val;
+
+		bv_program_set_global(m_prog, varName.c_str(), objVar);
+
+		return true;
+	}
 	bool ShaderDebugger::SetGlobalValue(const std::string& varName, const std::string& classType, glm::mat4 val)
 	{
 		int cols = 0, rows = 0;

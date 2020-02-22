@@ -1379,7 +1379,7 @@ namespace sd
 			HLSLCompiler::ExpressionType expType = m_convertType(declr->type);
 			var.Type = expType.Name;
 
-			if (m_isInsideBuffer || sd::IsBasicTexture(var.Type.c_str())) {
+			if (m_isInsideBuffer || sd::IsBasicTexture(var.Type.c_str()) || sd::IsCubemap(var.Type.c_str())) {
 				var.Storage = Variable::StorageType::Uniform;
 				// if (type.flags & M4::HLSLTypeFlag_Const) var.Storage = Variable::StorageType::Constant;
 				// if (type.flags & M4::HLSLTypeFlag_Static) {}

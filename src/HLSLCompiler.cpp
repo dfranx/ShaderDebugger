@@ -242,10 +242,14 @@ namespace sd
 	}
 
 	// hlslparser logger functions
+	// TODO: global var, change this
+	static std::string hlslCompilerLastErrorMsg = "";
 	void LogErrorArgs(void* userData, const char* format, va_list args)
 	{
-		(void)userData;
-		vprintf(format, args);
+		char buffer[256];
+		sprintf(buffer, format, args);
+
+		hlslCompilerLastErrorMsg = buffer;
 	}
 	void LogError(void* userData, const char* format, ...)
 	{
@@ -344,7 +348,7 @@ namespace sd
 		logger.LogErrorArgList = LogErrorArgs;
 		
 		// create parser
-		M4::HLSLParser parser(&allocator, &logger, "shader.hlsl", actualSource.data(), actualSource.size());
+		M4::HLSLParser parser(&allocator, &logger, "memory", actualSource.data(), actualSource.size());
 		M4::HLSLTree tree(&allocator);
 		
 		// structure definitions
@@ -424,7 +428,7 @@ namespace sd
 
 		if (!parser.Parse(&tree))
 		{
-			LogError(NULL, "Parsing failed, aborting\n");
+			m_lastErrorMsg = hlslCompilerLastErrorMsg;
 			m_immGlobals.clear();
 			return false;
 		}
@@ -436,6 +440,9 @@ namespace sd
 		m_immGlobals.clear();
 		string_pool.clear();
 		m_freeImmediate();
+
+		if (!res)
+			m_lastErrorMsg = "Failed to translate HLSL code to BlueVM bytecode";
 
 		return res;
 	}
@@ -1302,9 +1309,21 @@ namespace sd
 		if (m_curFuncData != nullptr) {
 			HLSLCompiler::ExpressionType lType = m_convertType(declr->type);
 
-			m_locals[m_currentFunction].push_back(declr->name);
-			m_localTypes[m_currentFunction][std::string(declr->name)] = lType.Name;
-
+			// check if it already exists, if it doesn't add it
+			bool alreadyExists = false;
+			size_t varIndex = 0;
+			for (size_t i = 0; i < m_locals[m_currentFunction].size(); i++)
+				if (m_locals[m_currentFunction][i] == declr->name) {
+					varIndex = i;
+					alreadyExists = true;
+					break;
+				}
+			if (!alreadyExists) {
+				m_locals[m_currentFunction].push_back(declr->name);
+				m_localTypes[m_currentFunction][std::string(declr->name)] = lType.Name;
+				varIndex = m_locals[m_currentFunction].size() - 1;
+			}
+			
 			if (declr->type.array) {
 				translateExpression(declr->type.arraySize);
 				u8 dim = 0;
@@ -1314,7 +1333,7 @@ namespace sd
 					dim++;
 				}
 				m_gen.Function.NewArray(dim);
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				m_gen.Function.SetLocal(varIndex);
 			}
 			else if (declr->assignment) {
 				translateExpression(declr->assignment);
@@ -1323,16 +1342,16 @@ namespace sd
 				if (lType != rType)
 					m_generateConvert(lType);
 
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				m_gen.Function.SetLocal(varIndex);
 			}
 			else if (m_isTypeActuallyStruct(lType)) {
 				m_gen.Function.NewObjectByName(lType.Name);
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				m_gen.Function.SetLocal(varIndex);
 			}
 			else {
 				m_gen.Function.PushStack(0);
 				m_generateConvert(lType);
-				m_gen.Function.SetLocal(m_locals[m_currentFunction].size() - 1);
+				m_gen.Function.SetLocal(varIndex);
 			}
 		}
 		// global

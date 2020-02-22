@@ -28,6 +28,7 @@ namespace sd
 		inline const std::vector<Function>& GetFunctions() { return m_func; }
 		inline const std::vector<std::string>& GetLocals(const std::string& func) { return m_locals[func]; }
 		inline const std::string& GetLocalType(const std::string& func, const std::string& var) { return m_localTypes[func][var]; }
+		inline const std::string& GetLastErrorMessage() { return m_lastErrorMsg; }
 
 		inline void SetImmediate(bool s) { m_isImmediate = s; }
 		inline bool GetImmediate() { return m_isImmediate; }
@@ -80,6 +81,8 @@ namespace sd
 		std::unordered_map<std::string, std::vector<std::string>> m_locals;
 		std::unordered_map<std::string, std::unordered_map<std::string, std::string>> m_localTypes;
 		std::vector<std::string> m_stringTable;
+
+		std::string m_lastErrorMsg;
 
 		pp::MacroMap m_macros;
 	};

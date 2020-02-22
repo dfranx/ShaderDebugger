@@ -95,7 +95,10 @@ namespace sd
 		
         glsl::astTU *tu = p.parse(shaderType, m_isImmediate);
         if (tu && !p.errorOccured()) translate(tu);
-        else return false;
+		else {
+			m_lastErrorMsg = p.error();
+			return false;
+		}
 
 		return true;
 	}

@@ -469,7 +469,23 @@ namespace sd
 					Texture* tex = (Texture*)me->user_data;
 					glm::vec3 uv = sd::AsVector<3, float>(args[1]);
 
+
+					glm::ivec3 offset(0);
+					if (argc >= 3)
+						offset = sd::AsVector<3, int>(args[2]);
+
 					float lod = 0.0f; // TODO: LOD calculation
+
+					// TODO: or maybe have an actual argument in sd::Texture::Sample method for offset...
+					float xPixel = 1.0f / tex->Width;
+					float yPixel = 1.0f / tex->Height;
+					float zPixel = 1.0f / tex->Depth;
+
+					uv.x += offset.x * xPixel;
+					if (tex->Height > 1)
+						uv.y += offset.y * yPixel;
+					if (tex->Depth > 1)
+						uv.z += offset.z * zPixel;
 
 					glm::vec4 sample = tex->Sample(uv.x, uv.y, uv.z, lod);
 					

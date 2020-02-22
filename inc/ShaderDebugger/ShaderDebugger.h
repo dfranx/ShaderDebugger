@@ -66,8 +66,10 @@ namespace sd
 				
 				if (m_library != nullptr)
 					bv_program_add_library(m_prog, library);
-			} else {
-				m_error = "Failed to compile the program.";
+			}
+			
+			if (!done) {
+				m_error = m_compiler->GetLastErrorMessage();
 				return false;
 			}
 
@@ -141,6 +143,7 @@ namespace sd
 		bool m_checkBreakpoint(int line);
 		Function m_getFunctionInfo(const std::string& fname);
 
+		std::string m_typeToString(const bv_variable& var);
 		void m_clear();
 
 		bool m_discarded;

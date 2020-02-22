@@ -352,7 +352,7 @@ namespace sd
 		assert(m_immCompiler != nullptr);
 
 		m_immCompiler->ClearDefinitions();
-
+		
 		// pass string table
 		const std::vector<std::string>& strtable = m_compiler->GetStringTable();
 		for (const std::string& str : strtable)
@@ -370,10 +370,39 @@ namespace sd
 			m_immCompiler->AddStructureDefinition(str);
 
 		// pass the global definitions
-		const std::vector<sd::Variable>& globals = m_compiler->GetGlobals();
+		std::vector<sd::Variable> globals = m_compiler->GetGlobals();
 		for (const auto& glob : globals) {
 			m_immCompiler->AddGlobalDefinition(glob);
 			m_immCompiler->AddImmediateGlobalDefinition(glob);
+		}
+
+		// pass the non-explicitly defined variables (gl_FragCoord, gl_VertexID, ...)
+		unsigned int globLocIndex = 0;
+		for (u16 i = 0; i < m_prog->global_names.name_count; i++) {
+			bool alreadyExists = false;
+			for (size_t j = 0; j < globals.size(); j++) {
+				if (globals[j].Name == m_prog->global_names.names[i]) {
+					alreadyExists = true;
+					break;
+				}
+			}
+
+			if (i >= m_prog->globals.length || alreadyExists)
+				continue;
+
+			sd::Variable var;
+			var.Flat = false;
+			var.ID = globals.size() + globLocIndex;
+			var.InputSlot = -1;
+			var.IsArray = false;
+			var.Name = m_prog->global_names.names[i];
+			var.Type = m_typeToString(m_prog->globals.data[i]);
+
+			m_immCompiler->AddGlobalDefinition(var);
+			m_immCompiler->AddImmediateGlobalDefinition(var);
+			globals.push_back(var);
+
+			globLocIndex++;
 		}
 
 		// pass macro definitions
@@ -463,6 +492,21 @@ namespace sd
 		return bv_variable_create_void();
 	}
 
+	std::string ShaderDebugger::m_typeToString(const bv_variable& var)
+	{
+		if (var.type == bv_type_char || var.type == bv_type_uchar)
+			return "bool";
+		else if (bv_type_is_integer(var.type))
+			return "int";
+		else if (var.type == bv_type_float)
+			return "float";
+		else if (var.type == bv_type_object) {
+			bv_object* obj = (bv_object*)var.value;
+			return obj->type->name;
+		}
+
+		return "void";
+	}
 	Function ShaderDebugger::m_getFunctionInfo(const std::string& fname)
 	{
 		const auto& funcs = m_compiler->GetFunctions();

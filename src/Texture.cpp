@@ -56,15 +56,15 @@ namespace sd
 			return glm::vec4(1.0f);
 
 		// kind of "nearest" filtering
-		int x = u * Width;
-		int y = v * Height;
-		int z = w * Depth;
+		int x = u * (Width - 1);
+		int y = v * (Height - 1);
+		int z = w * (Depth - 1);
 		int m = mip * MipmapLevels;
 
 		// clamp (TODO: wrap)
-		x = std::min(Width, std::max(0, x));
-		y = std::min(Height, std::max(0, y));
-		z = std::min(Depth, std::max(0, z));
+		x = std::min(Width-1, std::max(0, x));
+		y = std::min(Height - 1, std::max(0, y));
+		z = std::min(Depth - 1, std::max(0, z));
 
 		// clamp mipmap level
 		m = std::min(MipmapLevels, std::max(0, m));
@@ -79,9 +79,9 @@ namespace sd
 			return glm::vec4(1.0f);
 		
 		// clamp (TODO: wrap)
-		u = std::min(Width, std::max(0, w));
-		v = std::min(Height, std::max(0, v));
-		w = std::min(Depth, std::max(0, w));
+		u = std::min(Width - 1, std::max(0, w));
+		v = std::min(Height - 1, std::max(0, v));
+		w = std::min(Depth - 1, std::max(0, w));
 
 		// clamp mipmap level
 		mip = std::min(MipmapLevels, std::max(0, mip));

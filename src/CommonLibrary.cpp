@@ -1460,7 +1460,7 @@ namespace sd
 					float b = bv_variable_get_float(bv_variable_cast(bv_type_float, args[1]));
 					float c = bv_variable_get_float(bv_variable_cast(bv_type_float, args[2]));
 
-					return bv_variable_create_float(glm::fma(a, b, c));
+					return bv_variable_create_float(a * b + c);
 				}
 			}
 

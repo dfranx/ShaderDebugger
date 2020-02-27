@@ -1442,7 +1442,7 @@ namespace sd
 					glm::vec4 b = sd::AsVector<4, float>(args[1]);
 					glm::vec4 c = sd::AsVector<4, float>(args[2]);
 
-					glm::vec4 vecData = glm::fma(a, b, c);
+					glm::vec4 vecData = a * b + c;
 
 					bv_variable ret = Common::create_vec(prog, bv_type_float, vec->type->props.name_count);
 					bv_object* retObj = bv_variable_get_object(ret);

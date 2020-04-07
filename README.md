@@ -1,5 +1,7 @@
 # ShaderDebugger
 
+**This project is deprecated**. Check [SPIRV-VM](https://www.github.com/dfranx/SPIRV-VM) instead.
+
 ShaderDebugger is a cross platform C++ library that can be used to debug GLSL and HLSL shaders.
 It has plenty of cool features: conditional breakpoints, step-by-step debugging, executing expressions on the fly, get variable values, etc...
 We will describe each of those in more details later in this README file.
